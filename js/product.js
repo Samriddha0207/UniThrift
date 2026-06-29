@@ -42,12 +42,56 @@ async function loadProduct() {
 
     currentProduct = result.product;
     productTitle.textContent = currentProduct.title;
-    productPrice.textContent = `₹${currentProduct.price}`;
+    productPrice.textContent = `₹${Number(currentProduct.price).toLocaleString('en-IN')}`;
     productCondition.textContent = `Condition: ${currentProduct.condition}`;
     deliveryDate.textContent = currentProduct.delivery_date || "Not specified";
     warranty.textContent = currentProduct.warranty || "No warranty";
     paymentMethods.textContent = currentProduct.payment_methods || "UPI";
     productDescription.textContent = currentProduct.description;
+
+    // Show sold banner if sold
+    if (currentProduct.is_sold) {
+        const soldBanner = document.createElement('div');
+        soldBanner.style.cssText = "background:#ef4444;color:white;text-align:center;padding:12px;font-weight:700;font-size:1.1rem;letter-spacing:2px;margin-bottom:16px;border-radius:10px;";
+        soldBanner.textContent = "⚠️ THIS ITEM HAS BEEN SOLD";
+        document.querySelector('.details-section').prepend(soldBanner);
+        document.getElementById('addCartBtn').disabled = true;
+        document.getElementById('addCartBtn').style.opacity = '0.4';
+        document.getElementById('addCartBtn').style.cursor = 'not-allowed';
+    }
+
+    // Show Mark as Sold button if current user is the owner
+    const token = localStorage.getItem("unithrift_session_token");
+    if (token && !currentProduct.is_sold) {
+        try {
+            const r = await fetch('/api/profile', { headers: { 'Authorization': `Bearer ${token}` } });
+            const d = await r.json();
+            if (d.success && d.profile?.id === currentProduct.user_id) {
+                const markSoldBtn = document.createElement('button');
+                markSoldBtn.textContent = 'Mark as Sold';
+                markSoldBtn.style.cssText = "width:100%;margin-top:10px;padding:13px;border:none;border-radius:12px;background:#f59e0b;color:white;font-weight:700;font-size:1rem;cursor:pointer;transition:.2s;";
+                markSoldBtn.addEventListener('click', async () => {
+                    if (!confirm("Mark this listing as sold? This cannot be undone.")) return;
+                    markSoldBtn.textContent = "Marking...";
+                    markSoldBtn.disabled = true;
+                    try {
+                        const res = await fetch(`/api/products/${productId}/sold`, {
+                            method: 'PATCH',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.message);
+                        window.location.reload();
+                    } catch (err) {
+                        alert("Failed: " + err.message);
+                        markSoldBtn.textContent = "Mark as Sold";
+                        markSoldBtn.disabled = false;
+                    }
+                });
+                document.querySelector('.action-buttons').appendChild(markSoldBtn);
+            }
+        } catch (_) {}
+    }
 
     // Render AI Verification Results dynamically
     renderAIVerification(currentProduct.ai_verification_status);

@@ -132,18 +132,37 @@ async function renderProducts(products) {
         return;
     }
 
+    // Get current user id so we can show "Mark as Sold" only to the owner
+    const token = localStorage.getItem("unithrift_session_token");
+    let currentUserId = null;
+    if (token) {
+        try {
+            const r = await fetch('/api/profile', { headers: { 'Authorization': `Bearer ${token}` } });
+            const d = await r.json();
+            if (d.success) currentUserId = d.profile?.id;
+        } catch (_) {}
+    }
+
     products.forEach(product => {
+        const isSold    = !!product.is_sold;
+        const isOwner   = currentUserId && product.user_id === currentUserId;
         const card = document.createElement("div");
         card.classList.add("product-card");
+        if (isSold) card.classList.add("product-card--sold");
+
         card.innerHTML = `
-            <img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.title)}" class="product-image" onerror="this.src='https://placehold.co/600x400?text=UniThrift'">
+            <div class="product-image-wrap">
+                <img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.title)}" class="product-image" onerror="this.src='https://placehold.co/600x400?text=UniThrift'">
+                ${isSold ? '<div class="sold-badge">SOLD</div>' : ''}
+            </div>
             <div class="product-content">
                 <h3>${escapeHtml(product.title)}</h3>
                 <p class="category">${escapeHtml(product.category)}</p>
                 <p class="condition">${escapeHtml(product.condition)}</p>
                 <div class="price">₹${Number(product.price).toLocaleString('en-IN')}</div>
                 <button class="view-btn" data-id="${product.id}">View Details</button>
-                <button class="add-cart-btn" data-id="${product.id}">Add To Cart</button>
+                ${!isSold ? `<button class="add-cart-btn" data-id="${product.id}">Add To Cart</button>` : `<button class="add-cart-btn" disabled style="opacity:0.4;cursor:not-allowed;">Sold Out</button>`}
+                ${isOwner && !isSold ? `<button class="mark-sold-btn" data-id="${product.id}">Mark as Sold</button>` : ''}
             </div>
         `;
         productsContainer.appendChild(card);
@@ -151,6 +170,7 @@ async function renderProducts(products) {
 
     attachViewButtons();
     attachCartButtons();
+    attachMarkSoldButtons();
 }
 
 function escapeHtml(str) {
@@ -167,12 +187,40 @@ function attachViewButtons() {
 
 function attachCartButtons() {
     document.querySelectorAll(".add-cart-btn").forEach(button => {
+        if (button.disabled) return;
         button.addEventListener("click", () => {
             const product = allProducts.find(p => p.id == button.dataset.id);
             if (cart.some(p => p.id == product.id)) return alert("Item already in cart");
             cart.push(product);
             saveCart();
             alert("Added to cart");
+        });
+    });
+}
+
+function attachMarkSoldButtons() {
+    document.querySelectorAll(".mark-sold-btn").forEach(button => {
+        button.addEventListener("click", async () => {
+            if (!confirm("Mark this listing as sold? This cannot be undone.")) return;
+            const token = localStorage.getItem("unithrift_session_token");
+            button.textContent = "Marking...";
+            button.disabled = true;
+            try {
+                const res = await fetch(`/api/products/${button.dataset.id}/sold`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message);
+                // Refresh the listing in allProducts and re-render
+                const idx = allProducts.findIndex(p => p.id == button.dataset.id);
+                if (idx !== -1) allProducts[idx].is_sold = true;
+                renderProducts(allProducts);
+            } catch (err) {
+                alert("Failed: " + err.message);
+                button.textContent = "Mark as Sold";
+                button.disabled = false;
+            }
         });
     });
 }

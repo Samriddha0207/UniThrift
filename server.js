@@ -605,6 +605,111 @@ app.use((err, req, res, next) => {
 // =========================================================================
 // 9. START SERVER
 // =========================================================================
+
+// =========================================================================
+// CHAT ROUTES
+// =========================================================================
+
+app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
+
+// ---- GET OR CREATE CHAT ROOM ----
+app.post('/api/chat/room', async (req, res) => {
+    try {
+        const user = await getUserFromToken(req);
+        const { product_id } = req.body;
+        if (!product_id) return res.status(400).json({ success: false, message: 'product_id required' });
+
+        const { data: product, error: prodError } = await supabase
+            .from('products').select('user_id').eq('id', product_id).single();
+        if (prodError || !product) return res.status(404).json({ success: false, message: 'Product not found' });
+
+        if (product.user_id === user.id)
+            return res.status(400).json({ success: false, message: "You can't chat with yourself." });
+
+        const { data: existing } = await supabase
+            .from('chat_rooms').select('id')
+            .eq('product_id', product_id).eq('buyer_id', user.id).maybeSingle();
+
+        if (existing) return res.json({ success: true, room_id: existing.id });
+
+        const { data: room, error: roomError } = await supabase
+            .from('chat_rooms')
+            .insert({ product_id, buyer_id: user.id, seller_id: product.user_id })
+            .select().single();
+        if (roomError) throw roomError;
+
+        return res.json({ success: true, room_id: room.id });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ---- GET ALL ROOMS FOR USER ----
+app.get('/api/chat/rooms', async (req, res) => {
+    try {
+        const user = await getUserFromToken(req);
+        const { data: rooms, error } = await supabase
+            .from('chat_rooms')
+            .select('id, created_at, product_id, products(title), buyer_id, seller_id')
+            .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+
+        // Attach role so frontend knows if user is buyer or seller
+        const enriched = (rooms || []).map(r => ({
+            ...r,
+            role: r.buyer_id === user.id ? 'Buyer' : 'Seller'
+        }));
+        return res.json({ success: true, rooms: enriched });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ---- GET MESSAGES ----
+app.get('/api/chat/rooms/:room_id/messages', async (req, res) => {
+    try {
+        const user = await getUserFromToken(req);
+        const { data: room } = await supabase
+            .from('chat_rooms').select('buyer_id, seller_id').eq('id', req.params.room_id).single();
+        if (!room || (room.buyer_id !== user.id && room.seller_id !== user.id))
+            return res.status(403).json({ success: false, message: 'Access denied' });
+
+        const { data: messages, error } = await supabase
+            .from('messages').select('*').eq('room_id', req.params.room_id)
+            .order('created_at', { ascending: true });
+        if (error) throw error;
+        return res.json({ success: true, messages: messages || [] });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ---- SEND MESSAGE ----
+app.post('/api/chat/rooms/:room_id/messages', async (req, res) => {
+    try {
+        const user = await getUserFromToken(req);
+        const { message_text } = req.body;
+        if (!message_text?.trim())
+            return res.status(400).json({ success: false, message: 'Message cannot be empty' });
+
+        const { data: room } = await supabase
+            .from('chat_rooms').select('buyer_id, seller_id').eq('id', req.params.room_id).single();
+        if (!room || (room.buyer_id !== user.id && room.seller_id !== user.id))
+            return res.status(403).json({ success: false, message: 'Access denied' });
+
+        const { data: msg, error } = await supabase
+            .from('messages')
+            .insert({ room_id: req.params.room_id, sender_id: user.id, message_text: message_text.trim() })
+            .select().single();
+        if (error) throw error;
+        return res.json({ success: true, message: msg });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// =========================================================================
 app.listen(PORT, () => {
     console.log(`🚀 UniThrift running at http://localhost:${PORT}`);
 });
