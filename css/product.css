@@ -115,6 +115,30 @@ body{
     border-color:var(--accent);
 }
 
+/* CHAT TRIGGER BUTTON */
+.chat-seller-trigger {
+    width: 100%;
+    margin-top: 20px;
+    padding: 15px;
+    border: 2px solid var(--accent);
+    background: transparent;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 1rem;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: 0.2s;
+}
+
+.chat-seller-trigger:hover {
+    background: var(--accent);
+    transform: translateY(-2px);
+}
+
 /* DETAILS */
 
 .details-section h1{
