@@ -257,6 +257,146 @@ body{
     line-height:1.8;
 }
 
+
+/* ======================================
+   CHAT POPUP WIDGET STYLES
+   ====================================== */
+.chat-popup {
+    display: none; /* Hidden by default, toggled via JS */
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    width: 360px;
+    height: 460px;
+    background-color: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.15);
+    flex-direction: column;
+    z-index: 1000;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    font-family: 'Poppins', sans-serif;
+}
+
+.chat-header {
+    background: #111827;
+    color: #ffffff;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chat-seller-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.online-indicator {
+    width: 9px;
+    height: 9px;
+    background-color: #10b981;
+    border-radius: 50%;
+}
+
+#chatSellerName {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.close-chat-btn {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 1.6rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    line-height: 1;
+}
+
+.close-chat-btn:hover {
+    color: #ffffff;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    background-color: #f9fafb;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.message {
+    max-width: 75%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.88rem;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.message.sent {
+    background-color: #2563eb;
+    color: #ffffff;
+    align-self: flex-end;
+    border-bottom-right-radius: 2px;
+}
+
+.message.received {
+    background-color: #e5e7eb;
+    color: #1f2937;
+    align-self: flex-start;
+    border-bottom-left-radius: 2px;
+}
+
+.message.system-msg {
+    background: none;
+    color: #6b7280;
+    font-size: 0.75rem;
+    text-align: center;
+    align-self: center;
+    max-width: 100%;
+}
+
+.chat-input-area {
+    display: flex;
+    padding: 12px;
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    gap: 8px;
+}
+
+#chatInput {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    outline: none;
+    font-size: 0.88rem;
+}
+
+#chatInput:focus {
+    border-color: #2563eb;
+}
+
+#chatForm button {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 0 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#chatForm button:hover {
+    background: #1d4ed8;
+}
+
 /* SELLER */
 
 .seller-section{
