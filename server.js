@@ -114,7 +114,7 @@ const uploadDoc = multer({
 });
 
 // =========================================================================
-// 3. AUTH HELPER — uses Supabase to verify ES256 tokens, auto-refreshes
+// 3. AUTH HELPER — uses Supabase to verify ES256 tokens
 // =========================================================================
 async function getUserFromToken(req) {
     const authHeader = req.headers['authorization'] || '';
@@ -124,55 +124,12 @@ async function getUserFromToken(req) {
     const token = parts[1].trim();
     if (!token) throw new Error('No token provided');
 
-    // --- 1. Try the access token as-is ---
     const { data, error } = await supabase.auth.getUser(token);
-    if (!error && data?.user)
-        return { id: data.user.id, email: data.user.email };
-
-    // --- 2. If expired, attempt silent refresh using X-Refresh-Token header ---
-    const isExpired = error?.message?.toLowerCase().includes('expired')
-                   || error?.message?.toLowerCase().includes('invalid');
-    if (!isExpired) {
+    if (error || !data?.user) {
         console.error('Supabase getUser failed:', error?.message);
-        throw new Error('Invalid session token');
+        throw new Error('Invalid or expired session token');
     }
-
-    const refreshToken = req.headers['x-refresh-token'];
-    if (!refreshToken) {
-        console.error('Supabase getUser failed: token expired, no refresh token provided');
-        throw new Error('Session expired. Please log in again.');
-    }
-
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
-        refresh_token: refreshToken
-    });
-
-    if (refreshError || !refreshData?.user) {
-        console.error('Token refresh failed:', refreshError?.message);
-        throw new Error('Session expired. Please log in again.');
-    }
-
-    // Attach new tokens to the response so the frontend can store them
-    req._newAccessToken  = refreshData.session.access_token;
-    req._newRefreshToken = refreshData.session.refresh_token;
-
-    return { id: refreshData.user.id, email: refreshData.user.email };
-}
-
-// Wraps any route handler — if getUserFromToken issued new tokens, they get
-// sent back in response headers so the frontend can update localStorage.
-function withTokenRefresh(handler) {
-    return async (req, res, next) => {
-        const originalJson = res.json.bind(res);
-        res.json = (body) => {
-            if (req._newAccessToken) {
-                res.setHeader('X-New-Access-Token',  req._newAccessToken);
-                res.setHeader('X-New-Refresh-Token', req._newRefreshToken);
-            }
-            return originalJson(body);
-        };
-        return handler(req, res, next);
-    };
+    return { id: data.user.id, email: data.user.email };
 }
 
 // =========================================================================
@@ -198,8 +155,7 @@ app.use(helmet({
 app.use(cors({
     origin: APP_URL,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Refresh-Token'],
-    exposedHeaders: ['X-New-Access-Token', 'X-New-Refresh-Token']
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 const loginLimiter = rateLimit({
@@ -810,77 +766,7 @@ app.post('/api/chat/rooms/:room_id/messages', async (req, res) => {
 });
 
 // =========================================================================
-// 10. NOTIFICATIONS ROUTES
-// =========================================================================
-app.get('/updates', (req, res) => res.sendFile(path.join(__dirname, 'updates.html')));
-
-// ---- GET NOTIFICATIONS FOR CURRENT USER ----
-app.get('/api/notifications', withTokenRefresh(async (req, res) => {
-    try {
-        const user = await getUserFromToken(req);
-        const { data, error } = await supabase
-            .from('notifications')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(50);
-        if (error) throw error;
-        return res.json({ success: true, notifications: data || [] });
-    } catch (err) {
-        return res.status(401).json({ success: false, message: err.message });
-    }
-}));
-
-// ---- MARK ONE NOTIFICATION AS READ ----
-app.post('/api/notifications/:id/read', withTokenRefresh(async (req, res) => {
-    try {
-        const user = await getUserFromToken(req);
-        const { error } = await supabase
-            .from('notifications')
-            .update({ read: true })
-            .eq('id', req.params.id)
-            .eq('user_id', user.id); // ownership check
-        if (error) throw error;
-        return res.json({ success: true });
-    } catch (err) {
-        return res.status(401).json({ success: false, message: err.message });
-    }
-}));
-
-// ---- MARK ALL NOTIFICATIONS AS READ ----
-app.post('/api/notifications/read-all', withTokenRefresh(async (req, res) => {
-    try {
-        const user = await getUserFromToken(req);
-        const { error } = await supabase
-            .from('notifications')
-            .update({ read: true })
-            .eq('user_id', user.id)
-            .eq('read', false);
-        if (error) throw error;
-        return res.json({ success: true });
-    } catch (err) {
-        return res.status(401).json({ success: false, message: err.message });
-    }
-}));
-
-// ---- UNREAD COUNT (lightweight, for badge) ----
-app.get('/api/notifications/unread-count', withTokenRefresh(async (req, res) => {
-    try {
-        const user = await getUserFromToken(req);
-        const { count, error } = await supabase
-            .from('notifications')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .eq('read', false);
-        if (error) throw error;
-        return res.json({ success: true, count: count || 0 });
-    } catch (err) {
-        return res.status(401).json({ success: false, message: err.message });
-    }
-}));
-
-// =========================================================================
-// 11. START SERVER
+// 9. START SERVER
 // =========================================================================
 app.listen(PORT, () => {
     console.log(`🚀 UniThrift running at http://localhost:${PORT}`);
