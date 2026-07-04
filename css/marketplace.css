@@ -14,7 +14,7 @@ html {
 }
 
 /* =========================================
-   THEMES (True Black & Midnight Matte)
+   THEMES (True Black & Lavender Glass)
 ========================================= */
 body.dark-theme {
     --bg: #050505;               /* True pure black canvas */
@@ -30,16 +30,16 @@ body.dark-theme {
 }
 
 body.light-theme {
-    --bg: #f8fafc;
-    --card: #ffffff;
-    --card-hover: #f1f5f9;
-    --text: #0f172a;
-    --secondary: #64748b;
-    --accent: #4f46e5;
-    --accent-hover: #4338ca;
-    --navbar: rgba(255, 255, 255, 0.85);
-    --border: rgba(15, 23, 42, 0.06);
-    --shadow: rgba(15, 23, 42, 0.04);
+    --bg: #f8f5ff;                       /* Soft lavender tint canvas from login.css */
+    --card: rgba(255, 255, 255, 0.42);   /* Glassmorphism translucent card from login.css */
+    --card-hover: rgba(255, 255, 255, 0.75); /* Elevated glass state */
+    --text: #2f2545;                     /* Deep purple charcoal text from login.css */
+    --secondary: #6d6486;                /* Muted lavender purple from login.css */
+    --accent: #8b5cf6;                   /* Primary purple from login.css */
+    --accent-hover: #7c3aed;             /* Primary deep dark purple from login.css */
+    --navbar: rgba(255, 255, 255, 0.45); /* Soft frosty lavender glass navigation */
+    --border: rgba(170, 150, 255, 0.25); /* Gentle amethyst line boundary from login.css */
+    --shadow: rgba(88, 62, 175, 0.12);   /* Theme-matched branding purple drop shadow */
 }
 
 body {
@@ -47,6 +47,30 @@ body {
     color: var(--text);
     transition: background-color 0.3s ease, color 0.3s ease;
     min-height: 100vh;
+}
+
+/* GLASSMORPHISM ENHANCEMENTS FOR LIGHT THEME
+========================================= */
+body.light-theme .navbar,
+body.light-theme .sidebar,
+body.light-theme .product-card,
+body.light-theme .cart-content,
+body.light-theme .support-card {
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    box-shadow: 0 20px 50px var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+body.light-theme .product-image-wrap {
+    background: transparent;
+}
+
+body.light-theme .filter-group select {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+body.light-theme .filter-group select:focus {
+    background: #ffffff;
 }
 
 /* =========================================
@@ -86,10 +110,10 @@ body {
     justify-content: center;
     color: white;
     font-size: 0.9rem;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
 }
 
-/* Search bar now lives inside the hero; kept generic so it can be reused elsewhere */
+/* Search bar inside hero; kept generic for global reuse */
 .search-container {
     width: 100%;
     max-width: 620px;
@@ -102,22 +126,39 @@ body {
 .search-container input {
     width: 100%;
     padding: 16px 58px 16px 22px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    border: 1px solid var(--border);
     outline: none;
-    background: rgba(18, 18, 20, 0.55);
-    color: #fff;
+    background: rgba(255, 255, 255, 0.6);
+    color: var(--text);
     border-radius: 30px;
     font-size: 0.95rem;
     transition: all 0.3s ease;
     backdrop-filter: blur(6px);
 }
 
+body.dark-theme .search-container input {
+    background: rgba(18, 18, 20, 0.55);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
 .search-container input::placeholder {
+    color: var(--secondary);
+    opacity: 0.8;
+}
+
+body.dark-theme .search-container input::placeholder {
     color: rgba(255, 255, 255, 0.6);
 }
 
 .search-container input:focus {
     border-color: var(--accent);
+    background: #ffffff;
+    box-shadow: 0 0 0 5px rgba(139, 135, 245, 0.18);
+}
+
+body.dark-theme .search-container input:focus {
+    background: rgba(18, 18, 20, 0.8);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
 }
 
@@ -178,7 +219,7 @@ body {
     border-radius: 50%;
     background: linear-gradient(135deg, var(--accent), #a78bfa);
     transition: transform 0.25s ease;
-    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 2px 6px rgba(139, 92, 246, 0.4);
 }
 
 body.light-theme .theme-switch-knob {
@@ -270,8 +311,8 @@ body.light-theme .theme-switch-knob {
     inset: 0;
     z-index: 1;
     background:
-        radial-gradient(ellipse 60% 70% at 50% 40%, rgba(5, 5, 5, 0.88), rgba(5, 5, 5, 0.55) 70%),
-        linear-gradient(180deg, rgba(5, 5, 5, 0.55) 0%, rgba(5, 5, 5, 0.35) 40%, rgba(5, 5, 5, 0.92) 100%);
+        radial-gradient(ellipse 60% 70% at 50% 40%, rgba(34, 20, 70, 0.65), rgba(5, 5, 5, 0.55) 70%),
+        linear-gradient(180deg, rgba(5, 5, 5, 0.55) 0%, rgba(5, 5, 5, 0.35) 40%, var(--bg) 100%);
 }
 
 .hero-content {
@@ -288,7 +329,7 @@ body.light-theme .theme-switch-knob {
     line-height: 1.18;
     margin-bottom: 28px;
     color: white;
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.45), 0 0 35px rgba(168, 85, 247, 0.6);
 }
 
 .sell-btn {
@@ -296,18 +337,18 @@ body.light-theme .theme-switch-knob {
     cursor: pointer;
     padding: 15px 34px;
     border-radius: 30px;
-    background: linear-gradient(135deg, var(--accent), #818cf8);
+    background: linear-gradient(135deg, var(--accent), #b794f6);
     color: white;
     font-weight: 600;
     font-size: 0.95rem;
     letter-spacing: 0.5px;
     transition: all 0.25s ease;
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.35);
 }
 
 .sell-btn:hover {
     transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+    box-shadow: 0 18px 40px rgba(124, 58, 237, 0.32);
 }
 
 /* =========================================
@@ -410,7 +451,7 @@ body.light-theme .theme-switch-knob {
 .trend-pill.active .trend-icon {
     background: var(--accent);
     border-color: var(--accent);
-    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
 }
 
 /* =========================================
@@ -471,7 +512,7 @@ body.light-theme .theme-switch-knob {
     color: var(--text);
     outline: none;
     font-size: 0.9rem;
-    transition: border 0.2s;
+    transition: border 0.2s, background-color 0.2s;
 }
 
 .filter-group select:focus {
@@ -662,8 +703,8 @@ body.light-theme .theme-switch-knob {
 
 .product-card:hover {
     transform: translateY(-6px);
-    box-shadow: 0 12px 24px -4px var(--shadow);
-    border-color: rgba(99, 102, 241, 0.2);
+    box-shadow: 0 25px 60px var(--shadow), inset 0 1px rgba(255, 255, 255, 0.65);
+    border-color: rgba(139, 92, 246, 0.3);
 }
 
 .product-image-wrap {
@@ -776,7 +817,7 @@ body.light-theme .theme-switch-knob {
     display: none;
     justify-content: center;
     align-items: center;
-    background: rgba(5, 5, 5, 0.7);
+    background: rgba(34, 20, 70, 0.45);
     backdrop-filter: blur(8px);
     z-index: 3000;
 }
@@ -927,7 +968,7 @@ body.light-theme .theme-switch-knob {
 ========================================= */
 .support-section {
     display: flex;
-    justify-content: center;
+    justify-content: center; /* Syntax correction completed here */
     align-items: center;
     padding: 80px 20px;
     background: var(--bg);
@@ -1016,7 +1057,7 @@ footer {
 .loader {
     width: 50px;
     height: 50px;
-    border: 4px solid rgba(99, 102, 241, 0.15);
+    border: 4px solid rgba(139, 92, 246, 0.15);
     border-top: 4px solid var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
@@ -1085,6 +1126,7 @@ footer {
         width: 92%;
     }
 }
+
 /* =========================================
    MARK AS SOLD BUTTON & STATES
 ========================================= */
@@ -1117,7 +1159,6 @@ footer {
     transform: scale(0.98);
 }
 
-/* OPTIONAL: Styling for when the item IS actually sold out */
 .product-card.is-sold {
     opacity: 0.65;
     position: relative;

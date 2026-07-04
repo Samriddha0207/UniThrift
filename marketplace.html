@@ -93,48 +93,41 @@
 
         </div>
 
-        <div class="trending-wrap">
+        <!-- Section container left-aligned; Inner layout normalized with a rigorous, uniform 20px margin-erasing gap -->
+        <div class="trending-wrap" style="display: flex; flex-direction: column; align-items: flex-start; width: 100%; margin-top: 25px;">
 
-            <h3 class="trending-title">Trending Categories</h3>
+            <h3 class="trending-title" style="text-align: left; margin-bottom: 12px;">Trending Categories</h3>
 
-            <div class="trending-carousel">
+            <div class="trending-carousel" style="display: flex; width: 100%;">
 
-                <button class="carousel-arrow" id="trendPrev" aria-label="Scroll left">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
+                <div class="trending-list" id="trendingList" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; align-items: center; width: 100%; padding: 5px 0;">
 
-                <div class="trending-list" id="trendingList">
-
-                    <button class="trend-pill" data-category="Books">
-                        <span class="trend-icon"><i class="fas fa-book-open"></i></span>
+                    <button class="trend-pill" data-category="Books" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin: 0; min-width: max-content;">
+                        <span class="trend-icon" style="margin: 0; padding: 0; display: flex; align-items: center;"><i class="fas fa-book-open"></i></span>
                         <span>Books</span>
                     </button>
 
-                    <button class="trend-pill" data-category="Electronics">
-                        <span class="trend-icon"><i class="fas fa-laptop"></i></span>
+                    <button class="trend-pill" data-category="Electronics" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin: 0; min-width: max-content;">
+                        <span class="trend-icon" style="margin: 0; padding: 0; display: flex; align-items: center;"><i class="fas fa-laptop"></i></span>
                         <span>Tech</span>
                     </button>
 
-                    <button class="trend-pill" data-category="Hostel Items">
-                        <span class="trend-icon"><i class="fas fa-couch"></i></span>
+                    <button class="trend-pill" data-category="Hostel Items" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin: 0; min-width: max-content;">
+                        <span class="trend-icon" style="margin: 0; padding: 0; display: flex; align-items: center;"><i class="fas fa-couch"></i></span>
                         <span>Dorm Decor</span>
                     </button>
 
-                    <button class="trend-pill" data-category="Lab Equipment">
-                        <span class="trend-icon"><i class="fas fa-flask"></i></span>
+                    <button class="trend-pill" data-category="Lab Equipment" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin: 0; min-width: max-content;">
+                        <span class="trend-icon" style="margin: 0; padding: 0; display: flex; align-items: center;"><i class="fas fa-flask"></i></span>
                         <span>Lab Equipment</span>
                     </button>
 
-                    <button class="trend-pill" data-category="Uniforms">
-                        <span class="trend-icon"><i class="fas fa-shirt"></i></span>
+                    <button class="trend-pill" data-category="Uniforms" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin: 0; min-width: max-content;">
+                        <span class="trend-icon" style="margin: 0; padding: 0; display: flex; align-items: center;"><i class="fas fa-shirt"></i></span>
                         <span>Uniforms</span>
                     </button>
 
                 </div>
-
-                <button class="carousel-arrow" id="trendNext" aria-label="Scroll right">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
 
             </div>
 
@@ -200,28 +193,28 @@
                     Condition
                 </label>
 
-                <div class="checkbox-list" id="conditionCheckboxes">
+                <div class="checkbox-list" id="conditionCheckboxes" style="display: flex; flex-direction: column; gap: 8px;">
 
-                    <label class="checkbox-item">
-                        <input type="checkbox" class="condition-checkbox" value="Like New">
+                    <label class="checkbox-item" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" class="condition-checkbox" value="Like New" style="margin: 0;">
                         <span class="checkbox-box"><i class="fas fa-check"></i></span>
                         <span>Like New</span>
                     </label>
 
-                    <label class="checkbox-item">
-                        <input type="checkbox" class="condition-checkbox" value="Excellent">
+                    <label class="checkbox-item" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" class="condition-checkbox" value="Excellent" style="margin: 0;">
                         <span class="checkbox-box"><i class="fas fa-check"></i></span>
                         <span>Excellent</span>
                     </label>
 
-                    <label class="checkbox-item">
-                        <input type="checkbox" class="condition-checkbox" value="Good">
+                    <label class="checkbox-item" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" class="condition-checkbox" value="Good" style="margin: 0;">
                         <span class="checkbox-box"><i class="fas fa-check"></i></span>
                         <span>Good</span>
                     </label>
 
-                    <label class="checkbox-item">
-                        <input type="checkbox" class="condition-checkbox" value="Fair">
+                    <label class="checkbox-item" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" class="condition-checkbox" value="Fair" style="margin: 0;">
                         <span class="checkbox-box"><i class="fas fa-check"></i></span>
                         <span>Fair</span>
                     </label>
@@ -424,15 +417,6 @@
                 pill.classList.add('active');
             });
         });
-
-        // Trending carousel arrows
-        var trendList = document.getElementById('trendingList');
-        var trendPrev = document.getElementById('trendPrev');
-        var trendNext = document.getElementById('trendNext');
-        if (trendPrev && trendNext && trendList) {
-            trendPrev.addEventListener('click', function () { trendList.scrollBy({ left: -220, behavior: 'smooth' }); });
-            trendNext.addEventListener('click', function () { trendList.scrollBy({ left: 220, behavior: 'smooth' }); });
-        }
 
         // Condition checkboxes act like a single-select and sync to the hidden #conditionFilter
         // so marketplace.js keeps working exactly as before.
