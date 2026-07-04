@@ -16,23 +16,26 @@ const PORT   = process.env.PORT || 3000;
 // 1. CONFIG — all secrets from .env
 // =========================================================================
 const SUPABASE_URL = process.env.SUPABASE_URL?.trim();
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY?.trim();
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY?.trim();
 const JWT_SECRET   = process.env.SUPABASE_JWT_SECRET?.trim();
-const APP_URL      = process.env.APP_URL?.trim() || 'http://localhost:3000';
+const APP_URL      = process.env.APP_URL?.trim() || "http://localhost:3000";
 
 if (!SUPABASE_URL || !SUPABASE_KEY || !JWT_SECRET) {
-    console.error('❌ Missing required environment variables. Check your .env file.');
-    console.error('   SUPABASE_URL:        ', !!SUPABASE_URL);
-    console.error('   SUPABASE_ANON_KEY:   ', !!SUPABASE_KEY);
-    console.error('   SUPABASE_JWT_SECRET: ', !!JWT_SECRET);
+    console.error("❌ Missing required environment variables. Check your .env file.");
+    console.error("   SUPABASE_URL:               ", !!SUPABASE_URL);
+    console.error("   SUPABASE_SERVICE_KEY:  ", !!SUPABASE_KEY);
+    console.error("   SUPABASE_JWT_SECRET:        ", !!JWT_SECRET);
     process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
 
 // Initialize Gemini[cite: 1]
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY); //[cite: 1]
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); //[cite: 1]
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); //[cite: 1]
 
 // --- AI VERIFICATION HELPER ---
 async function verifyProductWithAI(title, description, imageUrls) { //[cite: 1]
@@ -79,6 +82,54 @@ async function verifyProductWithAI(title, description, imageUrls) { //[cite: 1]
     } //[cite: 1]
 } //[cite: 1]
 
+// ---- GEMINI: COLLEGE ID CHECK ----
+async function verifyCollegeIdWithAI(fileBuffer, mimeType) {
+    try {
+        const base64Data = fileBuffer.toString('base64');
+        const prompt = `You are a document verification system for UniThrift, a university student marketplace in India.
+Examine this uploaded document. Determine if it is a GENUINE College/University ID card issued to a student.
+Check: institution name/logo, student photo, roll/enrollment number, authentic appearance.
+Reject: random photos, blank pages, non-student-ID documents, heavily blurred images.
+Return ONLY JSON, no markdown: {"verified": boolean, "reason": "one sentence", "confidence": 0.0}`;
+        const result = await model.generateContent([prompt, { inlineData: { data: base64Data, mimeType } }]);
+        const text = result.response.text();
+        const match = text.match(/\{[\s\S]*?\}/);
+        if (!match) throw new Error('No JSON from Gemini');
+        return JSON.parse(match[0]);
+    } catch (err) {
+        console.error('Gemini College ID error:', err.message);
+        return { verified: true, reason: 'AI check skipped (service error)', confidence: 0.5 };
+    }
+}
+
+// ---- GEMINI: PAN CARD CHECK ----
+async function verifyPanCardWithAI(fileBuffer, mimeType) {
+    try {
+        const base64Data = fileBuffer.toString('base64');
+        const prompt = `You are a KYC verification system for UniThrift, a university marketplace in India.
+Examine this uploaded document. Determine if it is a GENUINE Indian PAN Card issued by the Income Tax Department.
+Check: "Income Tax Department"/"Govt. of India" text, 10-char PAN number (AAAAA9999A format), holder name and DOB, official branding.
+Reject: Aadhaar, driving licence, random photos, blank pages, anything not a PAN card.
+Return ONLY JSON, no markdown: {"verified": boolean, "pan_number": "PAN or null", "reason": "one sentence", "confidence": 0.0}`;
+        const result = await model.generateContent([prompt, { inlineData: { data: base64Data, mimeType } }]);
+        const text = result.response.text();
+        const match = text.match(/\{[\s\S]*?\}/);
+        if (!match) throw new Error('No JSON from Gemini');
+        return JSON.parse(match[0]);
+    } catch (err) {
+        console.error('Gemini PAN error:', err.message);
+        return { verified: true, reason: 'AI check skipped (service error)', confidence: 0.5 };
+    }
+}
+
+// ---- INTERNAL: CREATE NOTIFICATION ----
+async function createNotification(userId, message, type = 'info', referenceId = null) {
+    const { error } = await supabase.from('notifications').insert({
+        user_id: userId, message, type, reference_id: referenceId, read: false
+    });
+    if (error) console.error('createNotification error:', error.message);
+}
+
 // =========================================================================
 // 2. MULTER — file size limit + MIME type whitelist
 // =========================================================================
@@ -114,7 +165,7 @@ const uploadDoc = multer({
 });
 
 // =========================================================================
-// 3. AUTH HELPER — uses Supabase to verify ES256 tokens
+// 3. AUTH HELPER — auto-refreshes expired tokens via X-Refresh-Token header
 // =========================================================================
 async function getUserFromToken(req) {
     const authHeader = req.headers['authorization'] || '';
@@ -124,12 +175,47 @@ async function getUserFromToken(req) {
     const token = parts[1].trim();
     if (!token) throw new Error('No token provided');
 
+    // 1. Try token as-is
     const { data, error } = await supabase.auth.getUser(token);
-    if (error || !data?.user) {
+    if (data?.user && !error)
+        return { id: data.user.id, email: data.user.email };
+
+    // 2. Expired — try silent refresh
+    const refreshToken = (req.headers['x-refresh-token'] || '').trim();
+    if (!refreshToken) {
         console.error('Supabase getUser failed:', error?.message);
-        throw new Error('Invalid or expired session token');
+        throw new Error('Session expired. Please log in again.');
     }
-    return { id: data.user.id, email: data.user.email };
+
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
+        refresh_token: refreshToken
+    });
+
+    if (refreshError || !refreshData?.user) {
+        console.error('Token refresh failed:', refreshError?.message);
+        throw new Error('Session expired. Please log in again.');
+    }
+
+    // Attach new tokens so withTokenRefresh can send them back
+    req._newAccessToken  = refreshData.session.access_token;
+    req._newRefreshToken = refreshData.session.refresh_token;
+
+    return { id: refreshData.user.id, email: refreshData.user.email };
+}
+
+// Sends refreshed tokens as response headers so the client can persist them
+function withTokenRefresh(handler) {
+    return async (req, res, next) => {
+        const originalJson = res.json.bind(res);
+        res.json = (body) => {
+            if (req._newAccessToken) {
+                res.setHeader('X-New-Access-Token',  req._newAccessToken);
+                res.setHeader('X-New-Refresh-Token', req._newRefreshToken);
+            }
+            return originalJson(body);
+        };
+        return handler(req, res, next);
+    };
 }
 
 // =========================================================================
@@ -155,7 +241,7 @@ app.use(helmet({
 app.use(cors({
     origin: APP_URL,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Refresh-Token']
 }));
 
 const loginLimiter = rateLimit({
@@ -205,6 +291,11 @@ app.get('/marketplace', (req, res) => res.sendFile(path.join(__dirname, 'marketp
 app.get('/product',     (req, res) => res.sendFile(path.join(__dirname, 'product.html')));
 app.get('/profile',     (req, res) => res.sendFile(path.join(__dirname, 'profile.html')));
 app.get('/sell',        (req, res) => res.sendFile(path.join(__dirname, 'sell.html')));
+app.get('/about',       (req, res) => res.sendFile(path.join(__dirname, 'about.html')));
+app.get('/terms',       (req, res) => res.sendFile(path.join(__dirname, 'terms.html')));
+app.get('/privacy',     (req, res) => res.sendFile(path.join(__dirname, 'privacy.html')));
+app.get('/help',        (req, res) => res.sendFile(path.join(__dirname, 'help.html')));
+app.get('/updates',     (req, res) => res.sendFile(path.join(__dirname, 'updates.html')));
 
 // =========================================================================
 // 7. API ROUTES
@@ -370,6 +461,19 @@ app.post('/api/profile/verify/student', uploadLimiter, uploadDoc.single('college
         const user = await getUserFromToken(req);
         if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
 
+        // Gemini AI check
+        console.log(`🤖 Gemini College ID check for ${user.id}...`);
+        const aiResult = await verifyCollegeIdWithAI(req.file.buffer, req.file.mimetype);
+        console.log('   Result:', aiResult);
+
+     if (!aiResult.verified) {
+    return res.status(400).json({
+        success: false,
+        message: aiResult.reason,
+        confidence: aiResult.confidence,
+        ai_verified: false
+    });
+}
         const ext      = req.file.originalname.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
         const fileName = `${user.id}_college_id_${Date.now()}.${ext}`;
 
@@ -379,12 +483,18 @@ app.post('/api/profile/verify/student', uploadLimiter, uploadDoc.single('college
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage.from('verification').getPublicUrl(fileName);
-        const { error: updateError } = await supabase
-            .from('profiles')
-            .upsert({ id: user.id, college_id_url: publicUrl, student_verified: false, updated_at: new Date() });
+        const { error: updateError } = await supabase.from('profiles').upsert({
+            id: user.id, college_id_url: publicUrl,
+            student_verified: false,
+            ai_id_confidence: aiResult.confidence ?? null,
+            updated_at: new Date()
+        });
         if (updateError) throw updateError;
 
-        return res.json({ success: true, url: publicUrl });
+        await createNotification(user.id,
+            "Your College ID has been submitted for review. We'll notify you once verified.", 'system');
+
+        return res.json({ success: true, ai_checked: true, message: 'College ID submitted. Verification under review.', url: publicUrl });
     } catch (error) {
         console.error('Student verification error:', error.message);
         return res.status(500).json({ success: false, message: error.message });
@@ -401,7 +511,21 @@ app.post('/api/profile/verify/seller', uploadLimiter, uploadDoc.fields([
         if (!req.files?.panCard || !req.files?.paymentQr)
             throw new Error('Both PAN Card and Payment QR are required');
 
-        const panFile     = req.files.panCard[0];
+        const panFile = req.files.panCard[0];
+        const qrFile  = req.files.paymentQr[0];
+
+        // Gemini AI check on PAN card
+        console.log(`🤖 Gemini PAN card check for ${user.id}...`);
+        const aiResult = await verifyPanCardWithAI(panFile.buffer, panFile.mimetype);
+        console.log('   Result:', aiResult);
+
+        if (!aiResult.verified) {
+            return res.status(400).json({
+                success: false, ai_checked: true,
+                message: `PAN card rejected: ${aiResult.reason}. Please upload a clear photo of your PAN card.`
+            });
+        }
+
         const panExt      = panFile.originalname.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
         const panFileName = `${user.id}_pan_${Date.now()}.${panExt}`;
         const { error: panError } = await supabase.storage
@@ -409,7 +533,6 @@ app.post('/api/profile/verify/seller', uploadLimiter, uploadDoc.fields([
             .upload(panFileName, panFile.buffer, { contentType: panFile.mimetype, upsert: true });
         if (panError) throw panError;
 
-        const qrFile     = req.files.paymentQr[0];
         const qrExt      = qrFile.originalname.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
         const qrFileName = `${user.id}_qr_${Date.now()}.${qrExt}`;
         const { error: qrError } = await supabase.storage
@@ -420,12 +543,19 @@ app.post('/api/profile/verify/seller', uploadLimiter, uploadDoc.fields([
         const { data: { publicUrl: panUrl } } = supabase.storage.from('verification').getPublicUrl(panFileName);
         const { data: { publicUrl: qrUrl  } } = supabase.storage.from('verification').getPublicUrl(qrFileName);
 
-        const { error: updateError } = await supabase
-            .from('profiles')
-            .upsert({ id: user.id, pan_url: panUrl, payment_qr_url: qrUrl, seller_verified: false, updated_at: new Date() });
+        const { error: updateError } = await supabase.from('profiles').upsert({
+            id: user.id, pan_url: panUrl, payment_qr_url: qrUrl,
+            pan_number_ai: aiResult.pan_number ?? null,
+            seller_verified: false,
+            ai_pan_confidence: aiResult.confidence ?? null,
+            updated_at: new Date()
+        });
         if (updateError) throw updateError;
 
-        return res.json({ success: true, pan_url: panUrl, qr_url: qrUrl });
+        await createNotification(user.id,
+            "Your seller verification documents have been submitted. We'll notify you once approved.", 'system');
+
+        return res.json({ success: true, ai_checked: true, message: 'Documents submitted. Seller verification under review.', pan_url: panUrl, qr_url: qrUrl });
     } catch (error) {
         console.error('Seller verification error:', error.message);
         return res.status(500).json({ success: false, message: error.message });
@@ -662,6 +792,52 @@ app.use((err, req, res, next) => {
         return res.status(400).json({ success: false, message: err.message });
     }
     next();
+});
+
+// =========================================================================
+// NOTIFICATIONS ROUTES
+// =========================================================================
+app.get('/api/notifications', async (req, res) => {
+    try {
+        const user = await getUserFromToken(req);
+        const { data, error } = await supabase
+            .from('notifications').select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false }).limit(50);
+        if (error) throw error;
+        return res.json({ success: true, notifications: data || [] });
+    } catch (err) { return res.status(401).json({ success: false, message: err.message }); }
+});
+
+app.get('/api/notifications/unread-count', async (req, res) => {
+    try {
+        const user = await getUserFromToken(req);
+        const { count, error } = await supabase
+            .from('notifications').select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id).eq('read', false);
+        if (error) throw error;
+        return res.json({ success: true, count: count || 0 });
+    } catch (err) { return res.status(401).json({ success: false, message: err.message }); }
+});
+
+app.post('/api/notifications/:id/read', async (req, res) => {
+    try {
+        const user = await getUserFromToken(req);
+        const { error } = await supabase.from('notifications')
+            .update({ read: true }).eq('id', req.params.id).eq('user_id', user.id);
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) { return res.status(401).json({ success: false, message: err.message }); }
+});
+
+app.post('/api/notifications/read-all', async (req, res) => {
+    try {
+        const user = await getUserFromToken(req);
+        const { error } = await supabase.from('notifications')
+            .update({ read: true }).eq('user_id', user.id).eq('read', false);
+        if (error) throw error;
+        return res.json({ success: true });
+    } catch (err) { return res.status(401).json({ success: false, message: err.message }); }
 });
 
 // =========================================================================

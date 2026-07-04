@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniThrift | Privacy Policy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+        body{background:#060b13;color:#f0f4ff;min-height:100vh;line-height:1.7;}
+        a{color:#6366f1;text-decoration:none;}a:hover{text-decoration:underline;}
+        .navbar{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:60px;background:#0d1526;border-bottom:1px solid #1a2640;}
+        .logo{display:flex;align-items:center;gap:9px;font-size:1.2rem;font-weight:700;color:#f0f4ff;text-decoration:none;}
+        .logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#a78bfa);display:flex;align-items:center;justify-content:center;color:white;font-size:.8rem;}
+        .nav-center{display:flex;gap:28px;}.nav-center a{color:#7a8aaa;font-size:.9rem;font-weight:500;text-decoration:none;transition:color .2s;}.nav-center a:hover{color:#f0f4ff;}
+        .nav-right{display:flex;gap:10px;margin-left:auto;}
+        .nav-icon-btn{width:36px;height:36px;border-radius:10px;border:1px solid #1a2640;background:#08101e;color:#7a8aaa;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;font-size:.9rem;}.nav-icon-btn:hover{border-color:#6366f1;color:#6366f1;}
+        .page-wrap{max-width:800px;margin:60px auto;padding:0 24px 80px;}
+        .page-hero{margin-bottom:40px;}
+        .page-hero .updated{font-size:.78rem;color:#7a8aaa;margin-bottom:10px;}
+        .page-hero h1{font-size:2rem;font-weight:800;letter-spacing:-.5px;margin-bottom:10px;}
+        .page-hero p{color:#7a8aaa;font-size:.9rem;}
+        .section{margin-bottom:28px;}
+        .section h2{font-size:1rem;font-weight:700;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #1a2640;display:flex;align-items:center;gap:9px;}
+        .section h2 i{color:#6366f1;font-size:.9rem;}
+        .section p,.section li{font-size:.88rem;color:#a0aec0;line-height:1.85;}
+        .section ul{padding-left:20px;display:flex;flex-direction:column;gap:7px;margin-top:8px;}
+        .section p+p{margin-top:10px;}
+        .data-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:.85rem;}
+        .data-table th{background:#08101e;color:#7a8aaa;font-weight:600;text-align:left;padding:10px 14px;border-bottom:1px solid #1a2640;}
+        .data-table td{padding:10px 14px;border-bottom:1px solid #1a2640;color:#a0aec0;vertical-align:top;}
+        .data-table tr:last-child td{border-bottom:none;}
+        .rights-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;}
+        .right-item{background:#08101e;border:1px solid #1a2640;border-radius:10px;padding:14px 16px;}
+        .right-item i{color:#6366f1;margin-bottom:6px;display:block;}
+        .right-item h4{font-size:.83rem;font-weight:600;margin-bottom:3px;}
+        .right-item p{font-size:.78rem;color:#7a8aaa;}
+        .site-footer{background:#0d1526;border-top:1px solid #1a2640;padding:28px 48px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;}
+        .site-footer p{color:#7a8aaa;font-size:.82rem;}
+        .footer-links{display:flex;gap:20px;}.footer-links a{color:#7a8aaa;font-size:.82rem;text-decoration:none;transition:color .2s;}.footer-links a:hover{color:#f0f4ff;}
+        @media(max-width:640px){.navbar{padding:0 16px;}.nav-center{display:none;}.page-wrap{margin:28px auto;padding:0 14px 60px;}.page-hero h1{font-size:1.5rem;}.rights-grid{grid-template-columns:1fr;}.site-footer{flex-direction:column;text-align:center;}}
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <a href="/marketplace" class="logo">
+        <span class="logo-icon"><i class="fas fa-bag-shopping"></i></span>
+        UniThrift
+    </a>
+    <div class="nav-center">
+        <a href="/marketplace">Browse</a>
+        <a href="#">Deals</a>
+        <a href="/updates">Updates</a>
+    </div>
+    <div class="nav-right">
+        <button class="nav-icon-btn" onclick="window.location.href='/marketplace'"><i class="fas fa-store"></i></button>
+        <button class="nav-icon-btn" onclick="window.location.href='/profile'"><i class="fas fa-user"></i></button>
+    </div>
+</nav>
+
+<div class="page-wrap">
+
+    <div class="page-hero">
+        <p class="updated"><i class="fas fa-clock"></i> Last updated: July 2026</p>
+        <h1>Privacy Policy</h1>
+        <p>We take your privacy seriously. This policy explains what data we collect, why we collect it, and how you can control it.</p>
+    </div>
+
+    <div class="section">
+        <h2><i class="fas fa-database"></i> What We Collect</h2>
+        <table class="data-table">
+            <thead><tr><th>Data</th><th>Why We Collect It</th><th>Stored Where</th></tr></thead>
+            <tbody>
+                <tr><td>Email address</td><td>Account authentication</td><td>Supabase Auth</td></tr>
+                <tr><td>Name, college, location</td><td>Profile display & discovery</td><td>Supabase DB</td></tr>
+                <tr><td>Profile photo</td><td>Identity on listings & chat</td><td>Supabase Storage</td></tr>
+                <tr><td>College ID card</td><td>Student verification (reviewed then stored securely)</td><td>Supabase Storage (private)</td></tr>
+                <tr><td>PAN card image</td><td>Seller KYC verification</td><td>Supabase Storage (private)</td></tr>
+                <tr><td>Payment QR code</td><td>Enable buyers to pay sellers</td><td>Supabase Storage</td></tr>
+                <tr><td>Chat messages</td><td>Buyer-seller communication</td><td>Supabase DB</td></tr>
+                <tr><td>Listing data</td><td>Marketplace functionality</td><td>Supabase DB</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2><i class="fas fa-shield-halved"></i> How We Protect It</h2>
+        <ul>
+            <li>All data is stored on Supabase with Row Level Security (RLS) — you can only access your own data</li>
+            <li>Verification documents (College ID, PAN card) are stored in private buckets — not publicly accessible</li>
+            <li>Authentication uses industry-standard JWT tokens with short expiry and automatic refresh</li>
+            <li>All traffic is encrypted via HTTPS/TLS</li>
+            <li>We never sell your data to third parties</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2><i class="fas fa-robot"></i> AI Processing</h2>
+        <p>When you submit verification documents, they are sent to Google Gemini AI for automated review. Gemini checks whether the document appears to be a genuine College ID or PAN card. The image is processed in real-time and is not stored by Google for training purposes under their API terms.</p>
+        <p>The AI result (verified/rejected + confidence score) is stored in your profile. The actual document image stays in our private Supabase storage bucket and is only reviewed by UniThrift administrators.</p>
+    </div>
+
+    <div class="section">
+        <h2><i class="fas fa-handshake"></i> Third Parties</h2>
+        <ul>
+            <li><strong>Supabase</strong> — database, auth, storage (GDPR compliant)</li>
+            <li><strong>Google Gemini API</strong> — document verification AI (see Google's privacy policy)</li>
+            <li><strong>Google Fonts / FontAwesome</strong> — UI assets (CDN, no personal data)</li>
+        </ul>
+        <p style="margin-top:10px;">We do not use advertising networks, analytics trackers, or sell data to any marketing platforms.</p>
+    </div>
+
+    <div class="section">
+        <h2><i class="fas fa-person-circle-check"></i> Your Rights</h2>
+        <div class="rights-grid">
+            <div class="right-item"><i class="fas fa-eye"></i><h4>Access</h4><p>Request a copy of all data we hold about you.</p></div>
+            <div class="right-item"><i class="fas fa-pen"></i><h4>Correction</h4><p>Update your profile details anytime from your dashboard.</p></div>
+            <div class="right-item"><i class="fas fa-trash"></i><h4>Deletion</h4><p>Delete your account to remove your public data.</p></div>
+            <div class="right-item"><i class="fas fa-download"></i><h4>Portability</h4><p>Request an export of your listings and profile data.</p></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2><i class="fas fa-envelope"></i> Contact</h2>
+        <p>For any privacy concerns or data requests, contact us at <a href="mailto:rizzmax.hacks@gmail.com">rizzmax.hacks@gmail.com</a>. We respond within 48 hours.</p>
+    </div>
+
+</div>
+
+<footer class="site-footer">
+    <p>© 2026 UniThrift. For students, by students.</p>
+    <div class="footer-links">
+        <a href="/about">About</a>
+        <a href="/terms">Terms</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/help">Help</a>
+    </div>
+</footer>
+</body>
+</html>

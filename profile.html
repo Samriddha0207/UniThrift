@@ -3,87 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UniThrift | Profile Dashboard</title>
+    <title>UniThrift | Profile</title>
     <link rel="stylesheet" href="/css/profile.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dark-theme">
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center;">
-        <div style="color:#fff; font-size:1.2rem; font-family:Poppins,sans-serif;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+    <div id="loadingOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+        <div style="color:#fff; font-size:1.1rem; font-family:Poppins,sans-serif;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
     </div>
 
     <nav class="navbar">
-        <div class="logo">UniThrift</div>
-        <div class="nav-links">
-            <a href="/marketplace"><i class="fas fa-store"></i> Marketplace</a>
-            <a href="/sell"><i class="fas fa-plus-circle"></i> Sell Item</a>
-            <a href="/profile" class="active"><i class="fas fa-user"></i> Profile</a>
-            <button id="logoutBtn" class="logout-btn">Logout</button>
+        <div class="logo">
+            <span class="logo-icon"><i class="fas fa-bag-shopping"></i></span>
+            UniThrift
+        </div>
+        <div class="nav-center">
+            <a href="/marketplace">Browse</a>
+            <a href="#">Deals</a>
+            <a href="/updates">Updates</a>
+        </div>
+        <div class="nav-right">
+            <div class="nav-search">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search campus...">
+            </div>
+            <button class="nav-icon-btn" id="cartBtn">
+                <i class="fas fa-cart-shopping"></i>
+            </button>
+            <div class="nav-avatar">
+                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" id="navAvatarImg" alt="avatar">
+            </div>
         </div>
     </nav>
 
-    <main class="profile-container">
+    <main class="profile-main">
 
-        <!-- ===== PROFILE HEADER ===== -->
-        <header class="profile-header">
-            <div class="avatar-wrapper">
+        <div class="profile-header glow-card">
+            <div class="ph-avatar-wrap">
                 <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" id="userAvatar" alt="Profile Picture">
-                <label for="avatarUpload" class="avatar-edit-btn" title="Change photo">
+                <label for="avatarUpload" class="avatar-cam" title="Change photo">
                     <i class="fas fa-camera"></i>
                 </label>
                 <input type="file" id="avatarUpload" accept="image/*" style="display:none;">
             </div>
 
-            <div class="user-identity">
+            <div class="ph-identity">
                 <h1 id="userName">—</h1>
-                <span class="badge badge-verified" id="studentBadge" style="display:none;">
+                <span class="badge-verified" id="studentBadge" style="display:none;">
                     <i class="fas fa-check-circle"></i> Verified Student
                 </span>
-                <p class="user-meta-text"><i class="fas fa-envelope"></i> <span id="userEmail">—</span></p>
-                <p class="user-meta-text"><i class="fas fa-phone"></i> <span id="userPhone">Not added</span></p>
+                <p class="ph-meta"><i class="fas fa-at"></i> <span id="userEmail">—</span></p>
+                <p class="ph-meta"><i class="fas fa-phone"></i> <span id="userPhone">Not added</span></p>
             </div>
 
-            <div class="account-meta">
-                <div class="meta-item">
-                    <i class="fas fa-calendar-alt"></i>
-                    <div>
-                        <span class="meta-label">Member since</span>
-                        <span class="meta-value" id="memberSince">—</span>
-                    </div>
+            <div class="ph-stats">
+                <div class="stat-pill">
+                    <span class="stat-label">MEMBER SINCE</span>
+                    <span class="stat-value" id="memberSince">—</span>
                 </div>
-                <div class="meta-item">
-                    <i class="fas fa-toggle-on"></i>
-                    <div>
-                        <span class="meta-label">Account Status</span>
-                        <span class="meta-value status-active" id="accountStatus">Active</span>
-                    </div>
+                <div class="stat-pill">
+                    <span class="stat-label">STATUS</span>
+                    <span class="stat-value stat-active"><span class="status-dot"></span> <span id="accountStatus">Active</span></span>
                 </div>
-                <button id="themeToggle" class="btn btn-outline" style="margin-top:10px;">
-                    <i class="fas fa-moon"></i> Toggle Theme
-                </button>
-                <button id="logoutAccountBtn" class="btn btn-outline" style="margin-top:8px; color:#f87171; border-color:#f87171;">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </button>
             </div>
-        </header>
+        </div>
 
-        <div class="dashboard-grid">
+        <div class="profile-grid">
 
-            <!-- ===== LEFT COLUMN ===== -->
             <div class="left-col">
 
-                <!-- Profile Details -->
-                <section class="card">
-                    <div class="card-title">
-                        <i class="fas fa-user-edit"></i> Profile Details
-                    </div>
+                <section class="pcard">
+                    <div class="pcard-title"><i class="fas fa-user-edit"></i> Profile Details</div>
                     <form id="profileForm">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="college">College Name</label>
+                                <label for="college">College</label>
                                 <input type="text" id="college" placeholder="e.g. Netaji Subhas Engineering College">
                             </div>
                             <div class="form-group">
@@ -93,7 +89,7 @@
                         </div>
                         <div class="form-group">
                             <label for="address">Address</label>
-                            <textarea id="address" rows="3" placeholder="Your full address..."></textarea>
+                            <textarea id="address" rows="2" placeholder="Your full address..."></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Profile
@@ -101,15 +97,12 @@
                     </form>
                 </section>
 
-                <!-- Student Verification -->
-                <section class="card" id="studentVerSection">
-                    <div class="card-title">
+                <section class="pcard" id="studentVerSection">
+                    <div class="pcard-title">
                         <i class="fas fa-graduation-cap"></i> Student Verification
-                        <span class="badge badge-success" id="studentStatus" style="margin-left:auto; font-size:0.75rem;">Checking...</span>
+                        <span class="badge-status" id="studentStatus">Checking...</span>
                     </div>
-                    <p style="font-size:0.85rem; margin-bottom:12px; opacity:0.7;">
-                        Upload your College ID card to verify your student status.
-                    </p>
+                    <p class="pcard-sub">Upload your College ID to verify student status.</p>
                     <div class="form-group">
                         <label for="collegeId">College ID Card</label>
                         <input type="file" id="collegeId" accept="image/*,application/pdf" class="file-input">
@@ -119,75 +112,71 @@
                     </button>
                 </section>
 
-                <!-- Seller Verification -->
-                <section class="card" id="sellerVerSection">
-                    <div class="card-title">
+                <section class="pcard" id="sellerVerSection">
+                    <div class="pcard-title">
                         <i class="fas fa-id-card"></i> Seller Verification
-                        <span class="badge badge-pending" id="sellerStatus" style="margin-left:auto; font-size:0.75rem;">Checking...</span>
+                        <span class="badge-status badge-pending" id="sellerStatus">Checking...</span>
                     </div>
-                    <p style="font-size:0.85rem; margin-bottom:12px; opacity:0.7;">
-                        Upload your PAN Card and UPI/Payment QR to unlock selling.
-                    </p>
+                    <p class="pcard-sub">Upload PAN Card + UPI QR to unlock selling.</p>
                     <div class="form-group">
                         <label for="panCard">PAN Card</label>
                         <input type="file" id="panCard" accept="image/*,application/pdf" class="file-input">
                     </div>
-                    <div class="form-group" style="margin-top:10px;">
+                    <div class="form-group">
                         <label for="paymentQr">Payment QR Code</label>
                         <input type="file" id="paymentQr" accept="image/*" class="file-input">
                     </div>
-                    <button class="btn btn-primary" id="sellerVerifyBtn" type="button" style="margin-top:12px;">
+                    <button class="btn btn-primary" id="sellerVerifyBtn" type="button">
                         <i class="fas fa-upload"></i> Submit for Verification
                     </button>
                 </section>
 
             </div>
 
-            <!-- ===== RIGHT COLUMN ===== -->
             <div class="right-col">
 
-                <!-- Verification Summary -->
-                <section class="card">
-                    <div class="card-title">
-                        <i class="fas fa-shield-alt"></i> Verification Status
-                    </div>
+                <section class="pcard glow-card">
+                    <div class="pcard-title"><i class="fas fa-shield-halved"></i> Verification Hub</div>
                     <div id="verificationSummary">
-                        <p style="opacity:0.5;">Loading...</p>
+                        <p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Checking status...</p>
                     </div>
-                    <!-- Seller Access Box -->
-                    <div id="sellerAccessBox" style="margin-top:16px;"></div>
+                    <div id="sellerAccessBox"></div>
                 </section>
 
-                <!-- Side Banners -->
-                <div class="side-banners">
-                    <div class="promo-banner buy-sell-banner">
-                        <div class="banner-content">
-                            <span class="banner-tag">Quick Tip</span>
-                            <h3>Safe Trading</h3>
-                            <p>Always meet on campus in public, well-lit spaces for item handovers.</p>
-                        </div>
-                        <img src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=400&q=80" alt="Campus Safety" class="banner-bg">
+                <div class="promo-banner">
+                    <img src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=600&q=80" alt="" class="promo-bg">
+                    <div class="promo-overlay"></div>
+                    <div class="promo-body">
+                        <span class="promo-badge"><i class="fas fa-lightbulb"></i> Quick Tip</span>
+                        <h3>Safe Trading</h3>
+                        <p>Always meet on campus in public, well-lit spaces for item handovers.</p>
                     </div>
+                </div>
 
-                    <div class="promo-banner premium-banner">
-                        <div class="banner-content">
-                            <span class="badge-premium"><i class="fas fa-crown"></i> Premium</span>
-                            <h3>Bump Your Ad</h3>
-                            <p>Get 5x more views by featuring your listings at the top of the campus feed.</p>
-                            <button class="btn-banner-link" type="button">Learn More <i class="fas fa-arrow-right"></i></button>
-                        </div>
-                        <img src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=400&q=80" alt="Premium Features" class="banner-bg">
+                <div class="promo-banner">
+                    <img src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=600&q=80" alt="" class="promo-bg">
+                    <div class="promo-overlay promo-overlay-purple"></div>
+                    <div class="promo-body">
+                        <span class="promo-badge promo-badge-gold"><i class="fas fa-crown"></i> Premium</span>
+                        <h3>Bump Your Ad</h3>
+                        <p>Get 5x more views by featuring your listings at the top of the campus feed.</p>
+                        <button class="promo-link" type="button">Learn More <i class="fas fa-arrow-right"></i></button>
                     </div>
+                </div>
+
+                <div class="logout-card glow-card-logout">
+                    <button id="logoutAccountBtn" class="logout-full-btn">
+                        <i class="fas fa-power-off"></i> Logout
+                    </button>
                 </div>
 
             </div>
         </div>
 
-        <!-- ===== MY LISTINGS ===== -->
         <section class="listings-section">
-            <div class="section-header">
+            <div class="listings-header">
                 <h2><i class="fas fa-th-large"></i> My Listings</h2>
-                <button class="btn btn-primary btn-title" id="newListingBtn">
+                <button class="btn btn-primary btn-sm" id="newListingBtn">
                     <i class="fas fa-plus"></i> New Listing
                 </button>
             </div>
@@ -196,9 +185,48 @@
 
     </main>
 
-    <footer>
-        <p>© 2026 UniThrift. All Rights Reserved.</p>
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div class="footer-col">
+                <div class="footer-logo">
+                    <span class="logo-icon-sm"><i class="fas fa-bag-shopping"></i></span>
+                    UniThrift
+                </div>
+                <p>The ultimate campus marketplace. Buy, sell, and trade with your fellow students in a secure, local environment.</p>
+                <p class="footer-tagline"><i class="fas fa-map-marker-alt"></i> &copy; 2026 UniThrift. For students, by students.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="/about">About Us</a></li>
+                    <li><a href="/terms">Terms of Service</a></li>
+                    <li><a href="/privacy">Privacy Policy</a></li>
+                    <li><a href="/help">Help Center</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Categories</h4>
+                <ul>
+                    <li><a href="/marketplace">Electronics</a></li>
+                    <li><a href="/marketplace">Textbooks</a></li>
+                    <li><a href="/marketplace">Dorm Furniture</a></li>
+                    <li><a href="/marketplace">Clothing</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Stay Updated</h4>
+                <p>Join our newsletter for the latest campus deals.</p>
+                <div class="newsletter-form">
+                    <input type="email" placeholder="Your email" id="newsletterEmail">
+                    <button type="button" id="newsletterBtn"><i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+        </div>
     </footer>
+
+    <!-- Hidden elements kept for profile.js compatibility -->
+    <button id="logoutBtn" style="display:none;"></button>
+    <button id="themeToggle" style="display:none;"></button>
 
     <script src="/js/profile.js"></script>
 </body>

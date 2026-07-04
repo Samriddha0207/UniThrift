@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniThrift | Updates</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+
+        body.dark-theme {
+            --bg: #060b13; --card: #0d1526; --border: #1a2640;
+            --text: #f0f4ff; --muted: #7a8aaa; --accent: #6366f1;
+            --accent-h: #4f46e5; --success: #10b981; --warning: #f59e0b;
+            --danger: #f43f5e; --input-bg: #08101e;
+            --sale: #10b981; --message: #6366f1; --offer: #f59e0b;
+            --system: #22d3ee; --info: #94a3b8;
+        }
+        body.light-theme {
+            --bg: #f1f5f9; --card: #ffffff; --border: #cbd5e1;
+            --text: #0f172a; --muted: #64748b; --accent: #4f46e5;
+            --accent-h: #4338ca; --success: #059669; --warning: #d97706;
+            --danger: #dc2626; --input-bg: #f8fafc;
+            --sale: #059669; --message: #4f46e5; --offer: #d97706;
+            --system: #0891b2; --info: #64748b;
+        }
+
+        body { background:var(--bg); color:var(--text); min-height:100vh; }
+
+        /* NAV */
+        .navbar {
+            position:sticky; top:0; z-index:100;
+            display:flex; align-items:center; justify-content:space-between;
+            padding:0 48px; height:60px;
+            background:var(--card); border-bottom:1px solid var(--border);
+        }
+        .logo { display:flex; align-items:center; gap:9px; font-size:1.2rem; font-weight:700; color:var(--text); text-decoration:none; }
+        .logo-icon { width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,#6366f1,#a78bfa); display:flex; align-items:center; justify-content:center; color:white; font-size:0.8rem; }
+        .nav-center { display:flex; gap:28px; }
+        .nav-center a { text-decoration:none; color:var(--muted); font-size:0.9rem; font-weight:500; transition:color 0.2s; }
+        .nav-center a:hover, .nav-center a.active { color:var(--text); }
+        .nav-right { display:flex; align-items:center; gap:12px; margin-left:auto; }
+        .nav-icon-btn { width:36px; height:36px; border-radius:10px; border:1px solid var(--border); background:var(--input-bg); color:var(--muted); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s; font-size:0.9rem; }
+        .nav-icon-btn:hover { border-color:var(--accent); color:var(--accent); }
+        .nav-avatar { width:36px; height:36px; border-radius:50%; overflow:hidden; border:2px solid var(--accent); cursor:pointer; }
+        .nav-avatar img { width:100%; height:100%; object-fit:cover; }
+
+        /* PAGE */
+        .page-wrap { max-width:760px; margin:40px auto; padding:0 20px; }
+
+        .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }
+        .page-header h1 { font-size:1.5rem; font-weight:700; display:flex; align-items:center; gap:10px; }
+        .page-header h1 i { color:var(--accent); }
+
+        .header-actions { display:flex; gap:10px; align-items:center; }
+
+        .btn { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; border-radius:9px; font-size:0.83rem; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
+        .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
+        .btn-outline:hover { border-color:var(--accent); color:var(--accent); }
+
+        .unread-badge {
+            background:var(--accent); color:white; font-size:0.7rem; font-weight:700;
+            padding:2px 7px; border-radius:10px; min-width:20px; text-align:center;
+        }
+
+        /* FILTER TABS */
+        .filter-tabs { display:flex; gap:8px; margin-bottom:22px; flex-wrap:wrap; }
+        .tab-btn {
+            padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:500;
+            border:1px solid var(--border); background:transparent; color:var(--muted);
+            cursor:pointer; transition:all 0.2s;
+        }
+        .tab-btn.active { background:var(--accent); border-color:var(--accent); color:white; }
+        .tab-btn:hover:not(.active) { border-color:var(--accent); color:var(--accent); }
+
+        /* NOTIFICATION LIST */
+        #notifList { display:flex; flex-direction:column; gap:10px; }
+
+        .notif-card {
+            display:flex; align-items:flex-start; gap:14px;
+            background:var(--card); border:1px solid var(--border);
+            border-radius:14px; padding:16px 18px;
+            transition:border-color 0.2s, opacity 0.2s;
+            cursor:pointer; position:relative;
+        }
+        .notif-card.unread { border-left:3px solid var(--accent); }
+        .notif-card:hover { border-color:var(--accent); }
+        .notif-card.read { opacity:0.65; }
+
+        .notif-icon {
+            width:40px; height:40px; border-radius:12px; display:flex;
+            align-items:center; justify-content:center; font-size:1rem; flex:none;
+        }
+        .notif-icon.sale    { background:rgba(16,185,129,0.12); color:var(--sale); }
+        .notif-icon.message { background:rgba(99,102,241,0.12); color:var(--message); }
+        .notif-icon.offer   { background:rgba(245,158,11,0.12); color:var(--offer); }
+        .notif-icon.system  { background:rgba(34,211,238,0.12); color:var(--system); }
+        .notif-icon.info    { background:rgba(148,163,184,0.12); color:var(--info); }
+
+        .notif-body { flex:1; }
+        .notif-body p { font-size:0.88rem; line-height:1.5; color:var(--text); }
+        .notif-body .notif-time { font-size:0.74rem; color:var(--muted); margin-top:4px; }
+
+        .notif-unread-dot {
+            width:8px; height:8px; border-radius:50%;
+            background:var(--accent); flex:none; margin-top:5px;
+            box-shadow:0 0 6px var(--accent);
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            text-align:center; padding:64px 20px; color:var(--muted);
+        }
+        .empty-state i { font-size:2.5rem; display:block; margin-bottom:14px; opacity:0.35; }
+        .empty-state p { font-size:0.9rem; }
+
+        /* LOADING */
+        .loading-row {
+            text-align:center; padding:40px; color:var(--muted); font-size:0.88rem;
+        }
+
+        /* SKELETON */
+        .skeleton {
+            background:var(--card); border:1px solid var(--border);
+            border-radius:14px; padding:16px 18px;
+            display:flex; gap:14px; align-items:center;
+        }
+        .skel-icon { width:40px; height:40px; border-radius:12px; background:var(--border); flex:none; animation:pulse 1.4s infinite; }
+        .skel-lines { flex:1; display:flex; flex-direction:column; gap:8px; }
+        .skel-line { height:12px; border-radius:6px; background:var(--border); animation:pulse 1.4s infinite; }
+        .skel-line.short { width:40%; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+
+        @media(max-width:640px) {
+            .navbar { padding:0 16px; }
+            .nav-center { display:none; }
+            .page-wrap { margin:24px auto; padding:0 12px; }
+        }
+    </style>
+</head>
+<body class="dark-theme">
+
+<nav class="navbar">
+    <a href="/marketplace" class="logo">
+        <span class="logo-icon"><i class="fas fa-bag-shopping"></i></span>
+        UniThrift
+    </a>
+    <div class="nav-center">
+        <a href="/marketplace">Browse</a>
+        <a href="#">Deals</a>
+        <a href="/updates" class="active">Updates</a>
+    </div>
+    <div class="nav-right">
+        <button class="nav-icon-btn" onclick="window.location.href='/profile'">
+            <i class="fas fa-user"></i>
+        </button>
+        <div class="nav-avatar" onclick="window.location.href='/profile'">
+            <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" id="navAvatar" alt="avatar">
+        </div>
+    </div>
+</nav>
+
+<div class="page-wrap">
+
+    <div class="page-header">
+        <h1>
+            <i class="fas fa-bell"></i>
+            Updates
+            <span class="unread-badge" id="unreadCount" style="display:none;">0</span>
+        </h1>
+        <div class="header-actions">
+            <button class="btn btn-outline" id="markAllReadBtn">
+                <i class="fas fa-check-double"></i> Mark all read
+            </button>
+        </div>
+    </div>
+
+    <div class="filter-tabs">
+        <button class="tab-btn active" data-filter="all">All</button>
+        <button class="tab-btn" data-filter="message"><i class="fas fa-comment"></i> Messages</button>
+        <button class="tab-btn" data-filter="sale"><i class="fas fa-tag"></i> Sales</button>
+        <button class="tab-btn" data-filter="offer"><i class="fas fa-hand-holding-dollar"></i> Offers</button>
+        <button class="tab-btn" data-filter="system"><i class="fas fa-gear"></i> System</button>
+    </div>
+
+    <div id="notifList">
+        <!-- skeletons while loading -->
+        <div class="skeleton"><div class="skel-icon"></div><div class="skel-lines"><div class="skel-line"></div><div class="skel-line short"></div></div></div>
+        <div class="skeleton"><div class="skel-icon"></div><div class="skel-lines"><div class="skel-line"></div><div class="skel-line short"></div></div></div>
+        <div class="skeleton"><div class="skel-icon"></div><div class="skel-lines"><div class="skel-line"></div><div class="skel-line short"></div></div></div>
+    </div>
+
+</div>
+
+<script src="/js/auth-fetch.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script>
+(async function() {
+    // ── Theme ──────────────────────────────────────────────────────────────
+    document.body.className = localStorage.getItem('theme') || 'dark-theme';
+
+    const SUPABASE_URL = window.__SUPABASE_URL__ || '';
+    const SUPABASE_KEY = window.__SUPABASE_ANON__ || '';
+
+    // ── State ──────────────────────────────────────────────────────────────
+    let allNotifications = [];
+    let currentFilter    = 'all';
+    const list           = document.getElementById('notifList');
+    const unreadBadge    = document.getElementById('unreadCount');
+
+    // ── Icon map ───────────────────────────────────────────────────────────
+    const ICONS = {
+        sale:    'fas fa-tag',
+        message: 'fas fa-comment',
+        offer:   'fas fa-hand-holding-dollar',
+        system:  'fas fa-gear',
+        info:    'fas fa-circle-info'
+    };
+
+    function timeAgo(dateStr) {
+        const diff = (Date.now() - new Date(dateStr)) / 1000;
+        if (diff < 60)   return 'just now';
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+        if (diff < 86400)return `${Math.floor(diff / 3600)}h ago`;
+        return `${Math.floor(diff / 86400)}d ago`;
+    }
+
+    function renderCard(n) {
+        const type = n.type || 'info';
+        const icon = ICONS[type] || ICONS.info;
+        return `
+        <div class="notif-card ${n.read ? 'read' : 'unread'}" data-id="${n.id}" data-type="${type}" data-ref="${n.reference_id || ''}">
+            <div class="notif-icon ${type}"><i class="${icon}"></i></div>
+            <div class="notif-body">
+                <p>${n.message}</p>
+                <span class="notif-time">${timeAgo(n.created_at)}</span>
+            </div>
+            ${!n.read ? '<div class="notif-unread-dot"></div>' : ''}
+        </div>`;
+    }
+
+    function renderList() {
+        const filtered = currentFilter === 'all'
+            ? allNotifications
+            : allNotifications.filter(n => n.type === currentFilter);
+
+        if (!filtered.length) {
+            list.innerHTML = `<div class="empty-state">
+                <i class="fas fa-bell-slash"></i>
+                <p>No ${currentFilter === 'all' ? '' : currentFilter + ' '}notifications yet.</p>
+            </div>`;
+            return;
+        }
+        list.innerHTML = filtered.map(renderCard).join('');
+
+        // Wire click → mark as read + navigate
+        list.querySelectorAll('.notif-card').forEach(card => {
+            card.addEventListener('click', async () => {
+                const id  = card.getAttribute('data-id');
+                const ref = card.getAttribute('data-ref');
+                const tp  = card.getAttribute('data-type');
+
+                if (card.classList.contains('unread')) {
+                    await authFetch(`/api/notifications/${id}/read`, { method: 'POST' });
+                    card.classList.remove('unread');
+                    card.classList.add('read');
+                    card.querySelector('.notif-unread-dot')?.remove();
+                    const n = allNotifications.find(x => x.id === id);
+                    if (n) n.read = true;
+                    updateBadge();
+                }
+
+                // Navigate based on type
+                if (tp === 'message' && ref) window.location.href = `/chat?room=${ref}`;
+                else if ((tp === 'sale' || tp === 'offer') && ref) window.location.href = `/product?id=${ref}`;
+            });
+        });
+    }
+
+    function updateBadge() {
+        const count = allNotifications.filter(n => !n.read).length;
+        if (count > 0) {
+            unreadBadge.textContent = count > 99 ? '99+' : count;
+            unreadBadge.style.display = 'inline-block';
+        } else {
+            unreadBadge.style.display = 'none';
+        }
+    }
+
+    // ── Load from API ──────────────────────────────────────────────────────
+    async function loadNotifications() {
+        try {
+            const res    = await authFetch('/api/notifications');
+            const result = await res.json();
+            if (!result.success) throw new Error(result.message);
+            allNotifications = result.notifications || [];
+            renderList();
+            updateBadge();
+        } catch (err) {
+            list.innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>${err.message}</p></div>`;
+        }
+    }
+
+    // ── Mark all read ──────────────────────────────────────────────────────
+    document.getElementById('markAllReadBtn').addEventListener('click', async () => {
+        await authFetch('/api/notifications/read-all', { method: 'POST' });
+        allNotifications.forEach(n => { n.read = true; });
+        renderList();
+        updateBadge();
+    });
+
+    // ── Filter tabs ────────────────────────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.getAttribute('data-filter');
+            renderList();
+        });
+    });
+
+    // ── Supabase Realtime (live push) ─────────────────────────────────────
+    // Only activates if you expose SUPABASE_URL + ANON_KEY to the client
+    // via a /api/config endpoint or injected script. Safe to leave blank
+    // — polling still works.
+    if (SUPABASE_URL && SUPABASE_KEY) {
+        const { createClient } = supabase;
+        const sb   = createClient(SUPABASE_URL, SUPABASE_KEY);
+        const token = localStorage.getItem('unithrift_session_token');
+        if (token) {
+            await sb.auth.setSession({
+                access_token:  token,
+                refresh_token: localStorage.getItem('unithrift_refresh_token') || ''
+            });
+            const userId = (await sb.auth.getUser()).data?.user?.id;
+            if (userId) {
+                sb.channel('notifications')
+                  .on('postgres_changes', {
+                      event: 'INSERT', schema: 'public', table: 'notifications',
+                      filter: `user_id=eq.${userId}`
+                  }, payload => {
+                      allNotifications.unshift(payload.new);
+                      renderList();
+                      updateBadge();
+                  })
+                  .subscribe();
+            }
+        }
+    }
+
+    await loadNotifications();
+})();
+</script>
+</body>
+</html>
