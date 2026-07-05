@@ -39,7 +39,11 @@ const chatSellerName = document.getElementById("chatSellerName");
 // Cache targets for async operations
 let currentProduct = null;
 let currentSeller = null;
-let currentUserId = null; 
+let currentUserId = null;
+
+// Disable chat interaction buttons until dataset loading is finished
+if (chatWithSellerBtn) chatWithSellerBtn.disabled = true;
+if (contactSellerBtn) contactSellerBtn.disabled = true;
 
 // ======================================
 // LOAD PRODUCT & DATA
@@ -59,6 +63,9 @@ async function loadProduct() {
     paymentMethods.textContent = currentProduct.payment_methods || "UPI";
     productDescription.textContent = currentProduct.description;
 
+    // Determine the exact owner id dynamically based on database object patterns
+    const targetedSellerId = currentProduct.seller_id || currentProduct.user_id;
+
     // Show sold banner if sold
     if (currentProduct.is_sold) {
         const soldBanner = document.createElement('div');
@@ -77,12 +84,12 @@ async function loadProduct() {
             const r = await fetch('/api/profile', { headers: { 'Authorization': `Bearer ${token}` } });
             const d = await r.json();
             if (d.success) {
-                currentUserId = d.profile?.id; 
+                currentUserId = d.profile?.id;
                 initNotificationListener(currentUserId);
             }
 
             // Show Mark as Sold button if current user is the owner
-            if (d.success && d.profile?.id === currentProduct.user_id) {
+            if (d.success && d.profile?.id === targetedSellerId) {
                 const markSoldBtn = document.createElement('button');
                 markSoldBtn.textContent = 'Mark as Sold';
                 markSoldBtn.style.cssText = "width:100%;margin-top:10px;padding:13px;border:none;border-radius:12px;background:#f59e0b;color:white;font-weight:700;font-size:1rem;cursor:pointer;transition:.2s;";
@@ -112,10 +119,15 @@ async function loadProduct() {
     // Render AI Verification Results dynamically
     renderAIVerification(currentProduct.ai_verification_status);
 
-    // Load secondary references
-    loadSeller(currentProduct.seller_id);
+    // Load secondary references safely with verified destination mapping fallback
+    loadSeller(targetedSellerId);
     loadImages(currentProduct.id);
     loadReviews(currentProduct.id);
+
+    // Re-enable chat features now that references are completely cached
+    if (chatWithSellerBtn) chatWithSellerBtn.disabled = false;
+    if (contactSellerBtn) contactSellerBtn.disabled = false;
+
   } catch (err) {
     console.error(err);
     productTitle.textContent = "Product Not Found";
@@ -150,6 +162,7 @@ function renderAIVerification(statusText) {
 }
 
 async function loadSeller(sellerId) {
+  if (!sellerId) return;
   try {
     const response = await fetch(`/api/user/${sellerId}`);
     const { success, seller } = await response.json();
@@ -330,17 +343,54 @@ function initNotificationListener(userId) {
     
     notificationChannel
         .on('broadcast', { event: 'new_msg_alert' }, (payload) => {
-            if (chatPopup.style.display === "flex") {
+            // 1. Appends instantly if the target chat window frame is open
+            if (chatPopup && chatPopup.style.display === "flex") {
                 const msgDiv = document.createElement("div");
                 msgDiv.classList.add("message", "received");
                 msgDiv.textContent = payload.payload.msg;
                 chatMessages.appendChild(msgDiv);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
-            } else {
-                renderInboundNotificationAlert(payload.payload.senderName, payload.payload.msg);
-            }
+            } 
+            
+            // 2. Transmits the incoming payload straight into the Profile Update container section
+            sendToProfileUpdateSection(payload.payload.senderName, payload.payload.msg);
         })
         .subscribe();
+}
+
+function sendToProfileUpdateSection(sender, message) {
+    // Looks for your update section dashboard container components
+    let updateSection = document.getElementById("profileUpdates") || document.querySelector(".update-section");
+    
+    if (!updateSection) {
+        console.warn("Update section element missing. Redirecting alert.");
+        renderInboundNotificationAlert(sender, message);
+        return;
+    }
+
+    // Build the dynamic update notification card block
+    const updateCard = document.createElement("div");
+    updateCard.className = "update-card dynamic-message-alert";
+    updateCard.style.cssText = "background: #27272a; border-left: 4px solid #10b981; padding: 12px; margin-bottom: 10px; border-radius: 8px; animation: fadeIn 0.3s ease;";
+    
+    updateCard.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <strong style="color: #10b981; font-size: 0.9rem;">💬 New Chat Message</strong>
+            <span style="font-size: 0.75rem; color: #a1a1aa;">Just now</span>
+        </div>
+        <p style="margin: 0; font-size: 0.85rem; color: #e4e4e7;">
+            <strong>${sender}:</strong> "${message}"
+        </p>
+    `;
+
+    // Strip default placeholder empty strings if they are present
+    const placeholder = updateSection.querySelector(".no-updates-placeholder") || updateSection.querySelector("p");
+    if (placeholder && (placeholder.textContent.includes("No") || placeholder.textContent.includes("empty"))) {
+        placeholder.remove();
+    }
+
+    // Prepend to place the newest messages directly at the top
+    updateSection.insertBefore(updateCard, updateSection.firstChild);
 }
 
 function renderInboundNotificationAlert(sender, message) {
@@ -348,13 +398,13 @@ function renderInboundNotificationAlert(sender, message) {
     if (!alertBox) {
         alertBox = document.createElement("div");
         alertBox.id = "unithriftNotificationBox";
-        alertBox.style.cssText = "position:fixed;bottom:24px;right:24px;background:#1e1e24;color:#fff;padding:16px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.3);z-index:9999;max-width:320px;border-left:4px solid #10b981;font-family:sans-serif;transition:all 0.3s ease;";
+        alertBox.style.cssText = "position:fixed;bottom:24px;right:24px;background:#1e1e24;color:#fff;padding:16px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.3);z-index:9999;max-width:320px;border-left:4px solid #10b981;font-family:sans-serif;";
         document.body.appendChild(alertBox);
     }
     
     alertBox.innerHTML = `
         <div style="font-weight:700;margin-bottom:4px;font-size:0.9rem;color:#10b981;">New Message from ${sender}</div>
-        <div style="font-size:0.85rem;color:#d1d5db;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${message}</div>
+        <div style="font-size:0.85rem;color:#d1d5db;">${message}</div>
     `;
     
     setTimeout(() => {
@@ -368,12 +418,12 @@ chatForm.addEventListener("submit", async (e) => {
     const text = chatInput.value.trim();
     if (!text) return;
 
-    if (!currentProduct || !currentProduct.seller_id) {
+    if (!currentProduct || !(currentProduct.seller_id || currentProduct.user_id)) {
         alert("Routing failure: Target identity reference context missing.");
         return;
     }
 
-    const sellerId = currentProduct.seller_id;
+    const sellerId = currentProduct.seller_id || currentProduct.user_id;
 
     const msgDiv = document.createElement("div");
     msgDiv.classList.add("message", "sent");
