@@ -479,7 +479,7 @@ body.light-theme .theme-switch-knob {
     position: sticky;
     top: 100px;
     height: fit-content;
-    box-shadow: 0 4px 20px -2px var(--shadow);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.15), 0 0 35px rgba(168, 85, 247, 0.6);
 }
 
 .sidebar-header h2 {
@@ -968,7 +968,7 @@ body.light-theme .theme-switch-knob {
 ========================================= */
 .support-section {
     display: flex;
-    justify-content: center; /* Syntax correction completed here */
+    justify-content: center;
     align-items: center;
     padding: 80px 20px;
     background: var(--bg);
