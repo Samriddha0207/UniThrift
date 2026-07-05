@@ -40,6 +40,7 @@ const chatSellerName = document.getElementById("chatSellerName");
 let currentProduct = null;
 let currentSeller = null;
 let currentUserId = null;
+let currentUserName = null; // <-- Added to cache current active buyer name cleanly
 
 // Disable chat interaction buttons until dataset loading is finished
 if (chatWithSellerBtn) chatWithSellerBtn.disabled = true;
@@ -85,6 +86,8 @@ async function loadProduct() {
             const d = await r.json();
             if (d.success) {
                 currentUserId = d.profile?.id;
+                // Capture the real profile text strings dynamically from payload
+                currentUserName = d.profile?.full_name || d.profile?.username; 
                 initNotificationListener(currentUserId);
             }
 
@@ -456,7 +459,7 @@ chatForm.addEventListener("submit", async (e) => {
                         payload: { 
                             msg: text, 
                             senderId: currentUserId,
-                            senderName: document.getElementById("userName")?.textContent || "Another Student"
+                            senderName: currentUserName || "Another Student" // <-- Uses the cached session value dynamically
                         }
                     });
                 }

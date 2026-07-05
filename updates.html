@@ -7,135 +7,273 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+        /* GLOBAL & RESET */
+        *, *::before, *::after { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
 
+        /* =========================================
+           THEMES (Matched to Marketplace)
+        ========================================= */
         body.dark-theme {
-            --bg: #060b13; --card: #0d1526; --border: #1a2640;
-            --text: #f0f4ff; --muted: #7a8aaa; --accent: #6366f1;
-            --accent-h: #4f46e5; --success: #10b981; --warning: #f59e0b;
-            --danger: #f43f5e; --input-bg: #08101e;
-            --sale: #10b981; --message: #6366f1; --offer: #f59e0b;
-            --system: #22d3ee; --info: #94a3b8;
+            --bg: #050505;               /* True pure black canvas */
+            --card: #121214;             /* Slate-tinted ultra-dark charcoal */
+            --card-hover: #1a1a1e;       /* Crisper elevation state */
+            --text: #f3f4f6;             /* Clean premium off-white */
+            --secondary: #8e939e;        /* Balanced muted text */
+            --accent: #6366f1;           /* Vibrant Indigo */
+            --accent-hover: #4f46e5;
+            --navbar: rgba(5, 5, 5, 0.85); /* Frosty pure black sticky nav */
+            --border: rgba(255, 255, 255, 0.07); /* Razor-thin premium border */
+            --shadow: rgba(0, 0, 0, 0.6);
+
+            /* High visibility Notification Category Colors */
+            --sale: #10b981; 
+            --message: #6366f1; 
+            --offer: #f59e0b;
+            --system: #22d3ee; 
+            --info: #94a3b8;
         }
+
         body.light-theme {
-            --bg: #f1f5f9; --card: #ffffff; --border: #cbd5e1;
-            --text: #0f172a; --muted: #64748b; --accent: #4f46e5;
-            --accent-h: #4338ca; --success: #059669; --warning: #d97706;
-            --danger: #dc2626; --input-bg: #f8fafc;
-            --sale: #059669; --message: #4f46e5; --offer: #d97706;
-            --system: #0891b2; --info: #64748b;
+            --bg: #f8f5ff;                       /* Soft lavender tint canvas */
+            --card: rgba(255, 255, 255, 0.42);   /* Glassmorphism translucent card */
+            --card-hover: rgba(255, 255, 255, 0.75); /* Elevated glass state */
+            --text: #2f2545;                     /* Deep purple charcoal text */
+            --secondary: #6d6486;                /* Muted lavender purple */
+            --accent: #8b5cf6;                   /* Primary purple */
+            --accent-hover: #7c3aed;             
+            --navbar: rgba(255, 255, 255, 0.45); /* Soft frosty lavender glass navigation */
+            --border: rgba(170, 150, 255, 0.25); /* Gentle amethyst line boundary */
+            --shadow: rgba(88, 62, 175, 0.12);   
+
+            /* High visibility Notification Category Colors (Light) */
+            --sale: #059669; 
+            --message: #7c3aed; 
+            --offer: #d97706;
+            --system: #0891b2; 
+            --info: #4b5563;
         }
 
-        body { background:var(--bg); color:var(--text); min-height:100vh; }
+        body { 
+            background: var(--bg); 
+            color: var(--text); 
+            min-height: 100vh; 
+            font-family: 'Poppins', sans-serif; 
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
 
-        /* NAV */
+        /* GLASSMORPHISM ENHANCEMENTS FOR LIGHT THEME */
+        body.light-theme .navbar,
+        body.light-theme .notif-card,
+        body.light-theme .skeleton {
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            box-shadow: 0 20px 50px var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+        }
+
+        /* =========================================
+           NAVBAR (Matched to Marketplace)
+        ========================================= */
         .navbar {
-            position:sticky; top:0; z-index:100;
-            display:flex; align-items:center; justify-content:space-between;
-            padding:0 48px; height:60px;
-            background:var(--card); border-bottom:1px solid var(--border);
+            position: sticky; 
+            top: 0; 
+            z-index: 1000;
+            display: flex; 
+            align-items: center; 
+            justify-content: flex-start; 
+            padding: 16px 5%; 
+            height: 70px;
+            background: var(--navbar); 
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            gap: 40px; 
         }
-        .logo { display:flex; align-items:center; gap:9px; font-size:1.2rem; font-weight:700; color:var(--text); text-decoration:none; }
-        .logo-icon { width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,#6366f1,#a78bfa); display:flex; align-items:center; justify-content:center; color:white; font-size:0.8rem; }
-        .nav-center { display:flex; gap:28px; }
-        .nav-center a { text-decoration:none; color:var(--muted); font-size:0.9rem; font-weight:500; transition:color 0.2s; }
-        .nav-center a:hover, .nav-center a.active { color:var(--text); }
-        .nav-right { display:flex; align-items:center; gap:12px; margin-left:auto; }
-        .nav-icon-btn { width:36px; height:36px; border-radius:10px; border:1px solid var(--border); background:var(--input-bg); color:var(--muted); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s; font-size:0.9rem; }
-        .nav-icon-btn:hover { border-color:var(--accent); color:var(--accent); }
-        .nav-avatar { width:36px; height:36px; border-radius:50%; overflow:hidden; border:2px solid var(--accent); cursor:pointer; }
-        .nav-avatar img { width:100%; height:100%; object-fit:cover; }
+        
+        .logo { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            font-size: 1.4rem; 
+            font-weight: 700; 
+            letter-spacing: -0.5px;
+            color: var(--text); 
+            text-decoration: none; 
+            flex-shrink: 0;
+        }
+        
+        .logo-mark { 
+            width: 34px; 
+            height: 34px; 
+            border-radius: 10px; 
+            background: linear-gradient(135deg, var(--accent), #a78bfa); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-size: 0.9rem; 
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+        }
 
-        /* PAGE */
-        .page-wrap { max-width:760px; margin:40px auto; padding:0 20px; }
+        .nav-center { 
+            display: flex; 
+            align-items: center;
+            gap: 24px; 
+        }
+        .nav-center a { text-decoration: none; color: var(--secondary); font-size: 0.95rem; font-weight: 500; transition: color 0.2s; }
+        .nav-center a:hover, .nav-center a.active { color: var(--text); }
+        
+        .theme-inline-toggle {
+            background: none;
+            border: none;
+            color: var(--secondary);
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+        .theme-inline-toggle:hover {
+            color: var(--text);
+            background-color: var(--border);
+        }
 
-        .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }
-        .page-header h1 { font-size:1.5rem; font-weight:700; display:flex; align-items:center; gap:10px; }
-        .page-header h1 i { color:var(--accent); }
+        body.dark-theme .theme-inline-toggle .fa-sun { display: block; }
+        body.dark-theme .theme-inline-toggle .fa-moon { display: none; }
+        body.light-theme .theme-inline-toggle .fa-sun { display: none; }
+        body.light-theme .theme-inline-toggle .fa-moon { display: block; }
 
-        .header-actions { display:flex; gap:10px; align-items:center; }
+        .nav-right { 
+            display: flex; 
+            align-items: center; 
+            gap: 14px; 
+            margin-left: auto; 
+        }
+        
+        .icon-btn {
+            width: 44px;
+            height: 44px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            border-radius: 14px;
+            background: var(--card);
+            color: var(--text);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .icon-btn:hover {
+            background: var(--card-hover);
+            border-color: var(--accent);
+            color: var(--accent);
+            transform: translateY(-2px);
+        }
 
-        .btn { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; border-radius:9px; font-size:0.83rem; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
-        .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
-        .btn-outline:hover { border-color:var(--accent); color:var(--accent); }
+        .nav-avatar { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; border: 2px solid var(--accent); cursor: pointer; }
+        .nav-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* =========================================
+           PAGE LAYOUT
+        ========================================= */
+        .page-wrap { max-width: 800px; margin: 50px auto; padding: 0 4%; }
+
+        .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 35px; }
+        .page-header h1 { font-size: 1.8rem; font-weight: 700; display: flex; align-items: center; gap: 12px; letter-spacing: -0.5px; }
+        .page-header h1 i { color: var(--accent); }
+
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 12px; font-size: 0.88rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.25s ease; }
+        .btn-outline { background: var(--card); border: 1px solid var(--border); color: var(--text); }
+        .btn-outline:hover { background: var(--card-hover); border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
 
         .unread-badge {
-            background:var(--accent); color:white; font-size:0.7rem; font-weight:700;
-            padding:2px 7px; border-radius:10px; min-width:20px; text-align:center;
+            background: var(--accent); color: white; font-size: 0.75rem; font-weight: 700;
+            padding: 3px 9px; border-radius: 12px; min-width: 24px; text-align: center;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.4);
         }
 
         /* FILTER TABS */
-        .filter-tabs { display:flex; gap:8px; margin-bottom:22px; flex-wrap:wrap; }
+        .filter-tabs { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
         .tab-btn {
-            padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:500;
-            border:1px solid var(--border); background:transparent; color:var(--muted);
-            cursor:pointer; transition:all 0.2s;
+            padding: 8px 18px; border-radius: 25px; font-size: 0.85rem; font-weight: 500;
+            border: 1px solid var(--border); background: var(--card); color: var(--secondary);
+            cursor: pointer; transition: all 0.2s ease;
         }
-        .tab-btn.active { background:var(--accent); border-color:var(--accent); color:white; }
-        .tab-btn:hover:not(.active) { border-color:var(--accent); color:var(--accent); }
+        .tab-btn.active { background: var(--accent); border-color: var(--accent); color: white; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35); }
+        .tab-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); background: var(--card-hover); }
 
-        /* NOTIFICATION LIST */
-        #notifList { display:flex; flex-direction:column; gap:10px; }
+        /* NOTIFICATION LIST COMPONENTS */
+        #notifList { display: flex; flex-direction: column; gap: 14px; }
 
         .notif-card {
-            display:flex; align-items:flex-start; gap:14px;
-            background:var(--card); border:1px solid var(--border);
-            border-radius:14px; padding:16px 18px;
-            transition:border-color 0.2s, opacity 0.2s;
-            cursor:pointer; position:relative;
+            display: flex; align-items: flex-start; gap: 16px;
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 18px; padding: 20px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer; position: relative;
+            box-shadow: 0 4px 12px var(--shadow);
         }
-        .notif-card.unread { border-left:3px solid var(--accent); }
-        .notif-card:hover { border-color:var(--accent); }
-        .notif-card.read { opacity:0.65; }
+        .notif-card.unread { border-left: 4px solid var(--accent); }
+        .notif-card:hover { border-color: var(--accent); background: var(--card-hover); transform: translateY(-2px); }
+        .notif-card.read { opacity: 0.65; }
 
         .notif-icon {
-            width:40px; height:40px; border-radius:12px; display:flex;
-            align-items:center; justify-content:center; font-size:1rem; flex:none;
+            width: 44px; height: 44px; border-radius: 14px; display: flex;
+            align-items: center; justify-content: center; font-size: 1.1rem; flex: none;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
-        .notif-icon.sale    { background:rgba(16,185,129,0.12); color:var(--sale); }
-        .notif-icon.message { background:rgba(99,102,241,0.12); color:var(--message); }
-        .notif-icon.offer   { background:rgba(245,158,11,0.12); color:var(--offer); }
-        .notif-icon.system  { background:rgba(34,211,238,0.12); color:var(--system); }
-        .notif-icon.info    { background:rgba(148,163,184,0.12); color:var(--info); }
+        body.light-theme .notif-icon { border: 1px solid rgba(0, 0, 0, 0.05); }
 
-        .notif-body { flex:1; }
-        .notif-body p { font-size:0.88rem; line-height:1.5; color:var(--text); }
-        .notif-body .notif-time { font-size:0.74rem; color:var(--muted); margin-top:4px; }
+        .notif-icon.sale    { background: rgba(16, 185, 129, 0.15); color: var(--sale); }
+        .notif-icon.message { background: rgba(99, 102, 241, 0.15); color: var(--message); }
+        .notif-icon.offer   { background: rgba(245, 158, 11, 0.15); color: var(--offer); }
+        .notif-icon.system  { background: rgba(34, 211, 238, 0.15); color: var(--system); }
+        .notif-icon.info    { background: rgba(148, 163, 184, 0.15); color: var(--info); }
+
+        .notif-body { flex: 1; padding-top: 2px; }
+        .notif-body p { font-size: 0.95rem; line-height: 1.5; color: var(--text); }
+        .notif-body .notif-time { font-size: 0.8rem; color: var(--secondary); margin-top: 6px; display: block; }
 
         .notif-unread-dot {
-            width:8px; height:8px; border-radius:50%;
-            background:var(--accent); flex:none; margin-top:5px;
-            box-shadow:0 0 6px var(--accent);
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--accent); flex: none; margin-top: 8px;
+            box-shadow: 0 0 10px var(--accent);
         }
 
         /* EMPTY STATE */
         .empty-state {
-            text-align:center; padding:64px 20px; color:var(--muted);
+            text-align: center; padding: 80px 20px; color: var(--secondary);
         }
-        .empty-state i { font-size:2.5rem; display:block; margin-bottom:14px; opacity:0.35; }
-        .empty-state p { font-size:0.9rem; }
+        .empty-state i { font-size: 3rem; display: block; margin-bottom: 18px; opacity: 0.35; color: var(--secondary); }
+        .empty-state p { font-size: 0.95rem; }
 
-        /* LOADING */
-        .loading-row {
-            text-align:center; padding:40px; color:var(--muted); font-size:0.88rem;
-        }
-
-        /* SKELETON */
+        /* SKELETON PLACEHOLDERS */
         .skeleton {
-            background:var(--card); border:1px solid var(--border);
-            border-radius:14px; padding:16px 18px;
-            display:flex; gap:14px; align-items:center;
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 18px; padding: 20px;
+            display: flex; gap: 16px; align-items: center;
+            box-shadow: 0 4px 12px var(--shadow);
         }
-        .skel-icon { width:40px; height:40px; border-radius:12px; background:var(--border); flex:none; animation:pulse 1.4s infinite; }
-        .skel-lines { flex:1; display:flex; flex-direction:column; gap:8px; }
-        .skel-line { height:12px; border-radius:6px; background:var(--border); animation:pulse 1.4s infinite; }
-        .skel-line.short { width:40%; }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+        .skel-icon { width: 44px; height: 44px; border-radius: 14px; background: var(--border); flex: none; animation: pulse 1.4s infinite; }
+        .skel-lines { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+        .skel-line { height: 14px; border-radius: 6px; background: var(--border); animation: pulse 1.4s infinite; }
+        .skel-line.short { width: 40%; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 
-        @media(max-width:640px) {
-            .navbar { padding:0 16px; }
-            .nav-center { display:none; }
-            .page-wrap { margin:24px auto; padding:0 12px; }
+        @media(max-width: 768px) {
+            .navbar { padding: 0 4%; gap: 15px; }
+            .nav-center { display: none; }
+            .page-wrap { margin: 30px auto; }
+            .page-header h1 { font-size: 1.5rem; }
         }
     </style>
 </head>
@@ -143,16 +281,20 @@
 
 <nav class="navbar">
     <a href="/marketplace" class="logo">
-        <span class="logo-icon"><i class="fas fa-bag-shopping"></i></span>
+        <span class="logo-mark"><i class="fas fa-bag-shopping"></i></span>
         UniThrift
     </a>
     <div class="nav-center">
+        <button class="theme-inline-toggle" id="themeToggleBtn" title="Toggle Theme">
+            <i class="fas fa-sun"></i>
+            <i class="fas fa-moon"></i>
+        </button>
         <a href="/marketplace">Browse</a>
         <a href="#">Deals</a>
         <a href="/updates" class="active">Updates</a>
     </div>
     <div class="nav-right">
-        <button class="nav-icon-btn" onclick="window.location.href='/profile'">
+        <button class="icon-btn" onclick="window.location.href='/profile'">
             <i class="fas fa-user"></i>
         </button>
         <div class="nav-avatar" onclick="window.location.href='/profile'">
@@ -185,7 +327,6 @@
     </div>
 
     <div id="notifList">
-        <!-- skeletons while loading -->
         <div class="skeleton"><div class="skel-icon"></div><div class="skel-lines"><div class="skel-line"></div><div class="skel-line short"></div></div></div>
         <div class="skeleton"><div class="skel-icon"></div><div class="skel-lines"><div class="skel-line"></div><div class="skel-line short"></div></div></div>
         <div class="skeleton"><div class="skel-icon"></div><div class="skel-lines"><div class="skel-line"></div><div class="skel-line short"></div></div></div>
@@ -197,19 +338,26 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 <script>
 (async function() {
-    // ── Theme ──────────────────────────────────────────────────────────────
-    document.body.className = localStorage.getItem('theme') || 'dark-theme';
+    // Initial Sync of Theme
+    const savedTheme = localStorage.getItem('theme') || 'dark-theme';
+    document.body.className = savedTheme;
+
+    // Underlying theme handler context setup
+    document.getElementById('themeToggleBtn').addEventListener('click', () => {
+        const currentTheme = document.body.className;
+        const targetTheme = currentTheme === 'dark-theme' ? 'light-theme' : 'dark-theme';
+        document.body.className = targetTheme;
+        localStorage.setItem('theme', targetTheme);
+    });
 
     const SUPABASE_URL = window.__SUPABASE_URL__ || '';
     const SUPABASE_KEY = window.__SUPABASE_ANON__ || '';
 
-    // ── State ──────────────────────────────────────────────────────────────
     let allNotifications = [];
     let currentFilter    = 'all';
     const list           = document.getElementById('notifList');
     const unreadBadge    = document.getElementById('unreadCount');
 
-    // ── Icon map ───────────────────────────────────────────────────────────
     const ICONS = {
         sale:    'fas fa-tag',
         message: 'fas fa-comment',
@@ -254,7 +402,6 @@
         }
         list.innerHTML = filtered.map(renderCard).join('');
 
-        // Wire click → mark as read + navigate
         list.querySelectorAll('.notif-card').forEach(card => {
             card.addEventListener('click', async () => {
                 const id  = card.getAttribute('data-id');
@@ -262,7 +409,9 @@
                 const tp  = card.getAttribute('data-type');
 
                 if (card.classList.contains('unread')) {
-                    await authFetch(`/api/notifications/${id}/read`, { method: 'POST' });
+                    if (id !== 'live-broadcast') {
+                        await authFetch(`/api/notifications/${id}/read`, { method: 'POST' });
+                    }
                     card.classList.remove('unread');
                     card.classList.add('read');
                     card.querySelector('.notif-unread-dot')?.remove();
@@ -271,7 +420,6 @@
                     updateBadge();
                 }
 
-                // Navigate based on type
                 if (tp === 'message' && ref) window.location.href = `/chat?room=${ref}`;
                 else if ((tp === 'sale' || tp === 'offer') && ref) window.location.href = `/product?id=${ref}`;
             });
@@ -288,7 +436,6 @@
         }
     }
 
-    // ── Load from API ──────────────────────────────────────────────────────
     async function loadNotifications() {
         try {
             const res    = await authFetch('/api/notifications');
@@ -302,7 +449,6 @@
         }
     }
 
-    // ── Mark all read ──────────────────────────────────────────────────────
     document.getElementById('markAllReadBtn').addEventListener('click', async () => {
         await authFetch('/api/notifications/read-all', { method: 'POST' });
         allNotifications.forEach(n => { n.read = true; });
@@ -310,7 +456,6 @@
         updateBadge();
     });
 
-    // ── Filter tabs ────────────────────────────────────────────────────────
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -320,10 +465,6 @@
         });
     });
 
-    // ── Supabase Realtime (live push) ─────────────────────────────────────
-    // Only activates if you expose SUPABASE_URL + ANON_KEY to the client
-    // via a /api/config endpoint or injected script. Safe to leave blank
-    // — polling still works.
     if (SUPABASE_URL && SUPABASE_KEY) {
         const { createClient } = supabase;
         const sb   = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -333,7 +474,19 @@
                 access_token:  token,
                 refresh_token: localStorage.getItem('unithrift_refresh_token') || ''
             });
-            const userId = (await sb.auth.getUser()).data?.user?.id;
+            
+            let activeUserId = null;
+            try {
+                const profileRes = await fetch('/api/profile', { headers: { 'Authorization': `Bearer ${token}` } });
+                const profileData = await profileRes.json();
+                if (profileData.success) {
+                    activeUserId = profileData.profile?.id;
+                }
+            } catch (err) {
+                console.error("Profile database extraction exception context:", err);
+            }
+
+            const userId = activeUserId || (await sb.auth.getUser()).data?.user?.id;
             if (userId) {
                 sb.channel('notifications')
                   .on('postgres_changes', {
@@ -341,6 +494,31 @@
                       filter: `user_id=eq.${userId}`
                   }, payload => {
                       allNotifications.unshift(payload.new);
+                      renderList();
+                      updateBadge();
+                  })
+                  .subscribe();
+
+                const broadcastChannel = sb.channel(`notifications:${userId}`);
+                broadcastChannel
+                  .on('broadcast', { event: 'new_msg_alert' }, (payload) => {
+                      const incomingMsg = payload.payload.msg;
+                      const senderName = payload.payload.senderName || "Another Student";
+                      const senderId = payload.payload.senderId || "";
+
+                      const emptyState = list.querySelector('.empty-state');
+                      if (emptyState) emptyState.remove();
+
+                      const syntheticNotif = {
+                          id: 'live-broadcast',
+                          type: 'message',
+                          message: `New message from ${senderName}: "${incomingMsg}"`,
+                          read: false,
+                          reference_id: senderId,
+                          created_at: new Date().toISOString()
+                      };
+
+                      allNotifications.unshift(syntheticNotif);
                       renderList();
                       updateBadge();
                   })
