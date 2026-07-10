@@ -22,13 +22,13 @@ const reviewsContainer = document.getElementById("reviewsContainer");
 const reviewForm = document.getElementById("reviewForm");
 const verificationInfo = document.getElementById("verificationInfo");
 
-// Modal Elements
+const actionButtonsWrapper = document.querySelector('.action-buttons');
+
 const contactSellerBtn = document.getElementById("contactSellerBtn");
 const contactModal = document.getElementById("contactModal");
 const closeModal = document.getElementById("closeModal");
 const modalSellerDetails = document.getElementById("modalSellerDetails");
 
-// Chat Popup Elements
 const chatWithSellerBtn = document.getElementById("chatWithSellerBtn");
 const chatPopup = document.getElementById("chatPopup");
 const closeChatBtn = document.getElementById("closeChatBtn");
@@ -44,16 +44,195 @@ const chatProductImage = document.getElementById("chatProductImage");
 const chatProductTitle = document.getElementById("chatProductTitle");
 const chatProductPrice = document.getElementById("chatProductPrice");
 
-// Cache targets for async operations
 let currentProduct = null;
 let currentSeller = null;
 let currentUserId = null;
 let currentUserName = null; 
 let activeRoomId = null;
+// ======================================
+// AUTH HELPERS
+// ======================================
 
-// Disable interaction buttons until dataset loading is finished
-if (chatWithSellerBtn) chatWithSellerBtn.disabled = true;
-if (contactSellerBtn) contactSellerBtn.disabled = true;
+async function tryRefreshToken() {
+    const refreshToken = localStorage.getItem("unithrift_refresh_token");
+
+    if (!refreshToken) {
+        return null;
+    }
+
+    try {
+        const response = await fetch("/api/auth/refresh", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                refresh_token: refreshToken
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            return null;
+        }
+
+        localStorage.setItem(
+            "unithrift_session_token",
+            data.access_token
+        );
+
+        localStorage.setItem(
+            "unithrift_refresh_token",
+            data.refresh_token
+        );
+
+        return data.access_token;
+
+    } catch (err) {
+        console.error("Token refresh failed:", err);
+        return null;
+    }
+}
+
+async function authFetch(url, options = {}) {
+
+    const token = localStorage.getItem("unithrift_session_token");
+    const refreshToken = localStorage.getItem("unithrift_refresh_token");
+
+    const buildHeaders = (accessToken) => {
+        const headers = new Headers(options.headers || {});
+
+        if (accessToken) {
+            headers.set("Authorization", `Bearer ${accessToken}`);
+        }
+
+        if (refreshToken) {
+            headers.set("X-Refresh-Token", refreshToken);
+        }
+
+        return headers;
+    };
+
+    let response = await fetch(url, {
+        ...options,
+        headers: buildHeaders(token)
+    });
+
+    if (response.status !== 401) {
+        return response;
+    }
+
+    const newToken = await tryRefreshToken();
+
+    if (!newToken) {
+        return response;
+    }
+
+    return fetch(url, {
+        ...options,
+        headers: buildHeaders(newToken)
+    });
+}
+
+if (chatWithSellerBtn) chatWithSellerBtn.style.display = 'none';
+if (contactSellerBtn) contactSellerBtn.style.display = 'none';
+
+// ======================================
+// SELLER EXCLUSIVE LAYOUT ROUTINE
+// ======================================
+function renderSellerLayout(token) {
+  if (!actionButtonsWrapper) return;
+
+  if (chatWithSellerBtn) {
+    chatWithSellerBtn.style.display = 'inline-flex';
+    chatWithSellerBtn.textContent = '💬 View Buyer Chats';
+    chatWithSellerBtn.disabled = false;
+  }
+  if (contactSellerBtn) {
+    contactSellerBtn.style.display = 'none';
+  }
+  
+  const dashboardBadge = document.createElement('div');
+  dashboardBadge.style.cssText = "width:100%; text-align:center; padding: 10px; background: #1e293b; color: #94a3b8; font-weight: 600; border-radius: 12px; margin-bottom: 8px; font-size: 0.9rem; border: 1px solid #334155;";
+  dashboardBadge.textContent = "🔒 You are managing this listing";
+  actionButtonsWrapper.appendChild(dashboardBadge);
+
+  if (!document.getElementById('markSoldBtnGenerated')) {
+    const markSoldBtn = document.createElement('button');
+    markSoldBtn.id = 'markSoldBtnGenerated';
+    markSoldBtn.textContent = 'Mark as Sold';
+    markSoldBtn.style.cssText = "width:100%; padding:13px; border:none; border-radius:12px; background:#f59e0b; color:white; font-weight:700; font-size:1rem; cursor:pointer; transition:.2s;";
+    
+    markSoldBtn.addEventListener('click', async () => {
+      if (!confirm("Mark this listing as sold? This cannot be undone.")) return;
+      markSoldBtn.textContent = "Marking...";
+      markSoldBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/products/${productId}/sold`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        window.location.reload();
+      } catch (err) {
+        alert("Failed: " + err.message);
+        markSoldBtn.textContent = "Mark as Sold";
+        markSoldBtn.disabled = false;
+      }
+    });
+    
+    actionButtonsWrapper.appendChild(markSoldBtn);
+  }
+
+  if (!document.getElementById('deleteBtnGenerated')) {
+    const deleteBtn = document.createElement('button');
+    deleteBtn.id = 'deleteBtnGenerated';
+    deleteBtn.textContent = 'Delete Item';
+    deleteBtn.style.cssText = "width:100%; padding:13px; border:none; border-radius:12px; background:#ef4444; color:white; font-weight:700; font-size:1rem; cursor:pointer; transition:.2s; margin-top: 8px;";
+    
+    deleteBtn.addEventListener('click', async () => {
+      if (!confirm("Are you sure you want to delete this listing? This action cannot be undone.")) return;
+      deleteBtn.textContent = "Deleting...";
+      deleteBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/products/${productId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+        alert("Product deleted successfully!");
+        window.location.href = "/marketplace";
+      } catch (err) {
+        alert("Failed: " + err.message);
+        deleteBtn.textContent = "Delete Item";
+        deleteBtn.disabled = false;
+      }
+    });
+    
+    actionButtonsWrapper.appendChild(deleteBtn);
+  }
+}
+
+// ======================================
+// BUYER/CLIENT EXCLUSIVE LAYOUT ROUTINE
+// ======================================
+async function renderBuyerLayout(token) {
+  if (chatWithSellerBtn) {
+    chatWithSellerBtn.style.display = 'inline-flex';
+    chatWithSellerBtn.disabled = false;
+  }
+  if (contactSellerBtn) {
+    contactSellerBtn.style.display = 'inline-flex';
+    contactSellerBtn.disabled = false;
+  }
+
+  if (token) {
+    await syncChatRoomHistory(token);
+  }
+}
 
 // ======================================
 // LOAD PRODUCT & DATA
@@ -91,53 +270,7 @@ async function loadProduct() {
       }
     }
 
-    const token = localStorage.getItem("unithrift_session_token");
-    if (token) {
-      try {
-        const r = await fetch('/api/profile', { headers: { 'Authorization': `Bearer ${token}` } });
-        const d = await r.json();
-        if (d.success) {
-          currentUserId = d.profile?.id;
-          currentUserName = d.profile?.full_name || d.profile?.username || "User"; 
-          initNotificationListener(currentUserId);
-          
-          // Pre-fetch structural room history alignment mapping context cleanly
-          await syncChatRoomHistory(token, targetedSellerId);
-        }
-
-        if (d.success && d.profile?.id === targetedSellerId) {
-          const markSoldBtn = document.createElement('button');
-          markSoldBtn.textContent = 'Mark as Sold';
-          markSoldBtn.style.cssText = "width:100%;margin-top:10px;padding:13px;border:none;border-radius:12px;background:#f59e0b;color:white;font-weight:700;font-size:1rem;cursor:pointer;transition:.2s;";
-          markSoldBtn.addEventListener('click', async () => {
-            if (!confirm("Mark this listing as sold? This cannot be undone.")) return;
-            markSoldBtn.textContent = "Marking...";
-            markSoldBtn.disabled = true;
-            try {
-              const res = await fetch(`/api/products/${productId}/sold`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
-              const data = await res.json();
-              if (!data.success) throw new Error(data.message);
-              window.location.reload();
-            } catch (err) {
-              alert("Failed: " + err.message);
-              markSoldBtn.textContent = "Mark as Sold";
-              markSoldBtn.disabled = false;
-            }
-          });
-          const actionButtons = document.querySelector('.action-buttons');
-          if (actionButtons) actionButtons.appendChild(markSoldBtn);
-        }
-      } catch (err) {
-        console.error("Profile initialization tracking context failure:", err);
-      }
-    }
-
-    // Parallelized asset load routines
     renderAIVerification(currentProduct.ai_verification_status);
-    
     await Promise.all([
       loadSeller(targetedSellerId),
       loadImages(currentProduct.id),
@@ -145,8 +278,31 @@ async function loadProduct() {
       loadAIInsights(currentProduct.id)
     ]);
 
-    if (chatWithSellerBtn) chatWithSellerBtn.disabled = false;
-    if (contactSellerBtn) contactSellerBtn.disabled = false;
+    const token = localStorage.getItem("unithrift_session_token");
+
+if (token) {
+  try {
+    const r = await authFetch('/api/profile');
+    const d = await r.json();
+
+    if (d.success) {
+      currentUserId = d.profile?.id;
+      currentUserName =
+        d.profile?.full_name ||
+        d.profile?.username ||
+        "User";
+    }
+
+  } catch (err) {
+    console.error("Profile initialization context failure:", err);
+  }
+}
+
+if (currentUserId && String(currentUserId) === String(targetedSellerId)) {
+  renderSellerLayout(token);
+} else {
+  await renderBuyerLayout(token);
+}
 
   } catch (err) {
     console.error(err);
@@ -160,7 +316,7 @@ async function loadProduct() {
 function renderAIVerification(statusText) {
   if (!verificationInfo) return;
   if (!statusText) {
-    verificationInfo.innerHTML = `<p style="color: #b5b5b5;">No verification log data exists for this item.</p>`;
+    verificationInfo.innerHTML = `<p style="color: #b5b5b5; margin: 0;">No verification log data exists for this item.</p>`;
     return;
   }
 
@@ -174,11 +330,9 @@ function renderAIVerification(statusText) {
     verificationInfo.style.borderLeft = "5px solid #10b981";
   } else {
     verificationInfo.innerHTML = `
-      <div style="display: flex; flex-direction: column; gap: 6px;">
-        <div>
-          <span style="background: #ef4444; color: white; padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">FLAGGED ISSUE</span>
-        </div>
-        <p style="margin: 5px 0 0 0; color: #fca5a5; font-weight: 500;">${statusText}</p>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="background: #ef4444; color: white; padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">FLAGGED ISSUE</span>
+        <p style="margin: 0; color: #fca5a5; font-weight: 500;">${statusText}</p>
       </div>
     `;
     verificationInfo.style.borderLeft = "5px solid #ef4444";
@@ -418,8 +572,9 @@ window.addEventListener("click", (e) => {
 // ======================================
 // ENHANCED CHAT COMPONENT ENGINE
 // ======================================
+let loadedMessageIds = new Set();
+let chatPollInterval = null;
 
-// Consistent with the IST-localized timestamps used elsewhere (rate-limit retry messaging)
 function formatMessageTime(dateInput) {
   const date = dateInput ? new Date(dateInput) : new Date();
   if (isNaN(date.getTime())) return "";
@@ -451,8 +606,6 @@ function appendMessageToUI(text, direction, timestamp) {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Fills the chat header (avatar / verified badge) and the compact product
-// card from data already loaded on the page — no extra API calls needed.
 function populateChatHeader() {
   const sellerData = currentSeller?.seller || currentSeller;
 
@@ -469,9 +622,6 @@ function populateChatHeader() {
     chatVerifiedBadge.style.display = isVerified ? "inline" : "none";
   }
 
-  // Presence isn't tracked yet; indicator defaults to online. Left as its
-  // own element so real presence data can be wired in later without
-  // touching the surrounding markup.
   if (chatOnlineIndicator) chatOnlineIndicator.style.background = "#10b981";
 
   if (currentProduct) {
@@ -484,193 +634,182 @@ function populateChatHeader() {
   }
 }
 
-// Structural Async Sync Channel Resolver History Engine
-async function syncChatRoomHistory(token, targetSellerId) {
-  try {
-    const roomResponse = await fetch('/api/chat/room', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` 
-      },
-      body: JSON.stringify({ product_id: productId, seller_id: targetSellerId })
-    });
-    const roomResult = await roomResponse.json();
-    if (!roomResult.success) throw new Error(roomResult.message);
-    activeRoomId = roomResult.room_id;
+async function fetchMessages() {
+  if (!activeRoomId) return;
+  const token = localStorage.getItem("unithrift_session_token");
+  if (!token) return;
 
-    const msgResponse = await fetch(`/api/chat/rooms/${activeRoomId}/messages`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const msgResult = await msgResponse.json();
+  try {
+    const response = await authFetch(`/api/chat/rooms/${activeRoomId}/messages`);
+    const msgResult = await response.json();
     
-    if (msgResult.success && msgResult.messages && chatMessages) {
-      chatMessages.innerHTML = '<div class="message system-msg">Welcome to campus chat! Protect your data.</div>';
+    if (msgResult.success && msgResult.messages) {
+      let addedNew = false;
       msgResult.messages.forEach(msg => {
-        const direction = (msg.sender_id === currentUserId) ? "sent" : "received";
-        const timestamp = msg.created_at || msg.inserted_at || msg.timestamp;
-        appendMessageToUI(msg.message_text || msg.message, direction, timestamp);
+        if (!loadedMessageIds.has(msg.id)) {
+          loadedMessageIds.add(msg.id);
+          const direction = (String(msg.sender_id) === String(currentUserId)) ? "sent" : "received";
+          const timestamp = msg.created_at || msg.inserted_at || msg.timestamp;
+          appendMessageToUI(msg.message_text, direction, timestamp);
+          addedNew = true;
+        }
       });
+      if (addedNew && chatMessages) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
     }
   } catch (err) {
+    console.error("Error fetching messages during poll:", err);
+  }
+}
+
+function startPolling() {
+  stopPolling();
+  fetchMessages();
+  chatPollInterval = setInterval(fetchMessages, 2500);
+}
+
+function stopPolling() {
+  if (chatPollInterval) {
+    clearInterval(chatPollInterval);
+    chatPollInterval = null;
+  }
+}
+
+async function syncChatRoomHistory() {
+  try {
+    const roomResponse = await authFetch('/api/chat/room', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        product_id: productId
+      })
+    });
+
+    const roomResult = await roomResponse.json();
+
+    if (!roomResult.success) {
+      throw new Error(
+        roomResult.message || "No active chats found for this product yet."
+      );
+    }
+
+    activeRoomId = roomResult.room_id;
+
+    loadedMessageIds.clear();
+
+    if (chatMessages) {
+      chatMessages.innerHTML =
+        '<div class="message system-msg">Welcome to campus chat! Protect your data.</div>';
+    }
+
+    startPolling();
+
+  } catch (err) {
     console.error("Failed to restore history structural sync map alignment:", err);
+
+    if (chatMessages) {
+      chatMessages.innerHTML = `
+        <div class="message system-msg"
+             style="background:#e11d48;color:white;border-radius:8px;padding:10px;margin:10px;">
+          ⚠️ Chat unavailable: ${err.message || "Please wait for a buyer to start a chat."}
+        </div>`;
+    }
   }
 }
 
 if (chatWithSellerBtn) {
   chatWithSellerBtn.addEventListener("click", async () => {
-    const token = localStorage.getItem("unithrift_session_token");
-    if (!token) return alert("Please login to chat with the seller.");
-    if (!currentProduct) return alert("Product data is loading. Please wait a moment.");
+
+    if (!localStorage.getItem("unithrift_session_token")) {
+      return alert("Please login to chat with the seller.");
+    }
+
+    if (!currentProduct) {
+      return alert("Product data is loading. Please wait a moment.");
+    }
 
     const sellerData = currentSeller?.seller || currentSeller;
-    const sellerName = sellerData?.full_name || sellerData?.username || "Seller";
-    const targetedSellerId = currentProduct.seller_id || currentProduct.user_id;
+    const sellerName =
+      sellerData?.full_name ||
+      sellerData?.username ||
+      "Seller";
 
-    if (chatSellerName) chatSellerName.textContent = sellerName;
+    const isSeller =
+      currentUserId &&
+      String(currentUserId) ===
+      String(currentProduct.seller_id || currentProduct.user_id);
+
+    if (chatSellerName) {
+      chatSellerName.textContent = isSeller
+        ? "Buyer Chat"
+        : sellerName;
+    }
+
     populateChatHeader();
 
-    // syncChatRoomHistory already finds-or-creates the room server-side
-    // (POST /api/chat/room) and reloads its history, so reopening the
-    // widget for the same product/seller always resumes the same
-    // conversation instead of starting a new one.
     if (chatPopup) chatPopup.classList.add("open");
     if (chatInput) chatInput.focus();
 
-    await syncChatRoomHistory(token, targetedSellerId);
+    await syncChatRoomHistory();
   });
 }
 
 if (closeChatBtn) {
-  closeChatBtn.addEventListener("click", () => { if (chatPopup) chatPopup.classList.remove("open"); });
+  closeChatBtn.addEventListener("click", () => {
+    if (chatPopup) chatPopup.classList.remove("open");
+    stopPolling();
+  });
 }
 
-// ======================================
-// REALTIME NOTIFICATION SYSTEM
-// ======================================
-function initNotificationListener(userId) {
-  if (typeof supabase === 'undefined' || !userId) return;
-  const notificationChannel = supabase.channel(`notifications:${userId}`);
-  
-  notificationChannel
-    .on('broadcast', { event: 'new_msg_alert' }, (payload) => {
-      if (payload.payload.productId === productId || !payload.payload.productId) {
-        if (chatPopup && chatPopup.classList.contains("open")) {
-          appendMessageToUI(payload.payload.msg, "received", new Date());
-        }
-      } 
-      sendToProfileUpdateSection(payload.payload.senderName, payload.payload.msg);
-    })
-    .subscribe();
-}
-
-function sendToProfileUpdateSection(sender, message) {
-  let updateSection = document.getElementById("profileUpdates") || document.querySelector(".update-section");
-  if (!updateSection) {
-    console.warn("Update dashboard view container components missing. Routing redirect framework layer.");
-    renderInboundNotificationAlert(sender, message);
-    return;
-  }
-
-  const updateCard = document.createElement("div");
-  updateCard.className = "update-card dynamic-message-alert";
-  updateCard.style.cssText = "background: #27272a; border-left: 4px solid #10b981; padding: 12px; margin-bottom: 10px; border-radius: 8px; animation: fadeIn 0.3s ease;";
-  
-  updateCard.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-      <strong style="color: #10b981; font-size: 0.9rem;">💬 New Chat Message</strong>
-      <span style="font-size: 0.75rem; color: #a1a1aa;">Just now</span>
-    </div>
-    <p style="margin: 0; font-size: 0.85rem; color: #e4e4e7;"><strong>${sender}:</strong> "${message}"</p>
-  `;
-
-  const placeholder = updateSection.querySelector(".no-updates-placeholder") || updateSection.querySelector("p");
-  if (placeholder && (placeholder.textContent.includes("No") || placeholder.textContent.includes("empty"))) {
-    placeholder.remove();
-  }
-  updateSection.insertBefore(updateCard, updateSection.firstChild);
-}
-
-function renderInboundNotificationAlert(sender, message) {
-  let alertBox = document.getElementById("unithriftNotificationBox");
-  if (!alertBox) {
-    alertBox = document.createElement("div");
-    alertBox.id = "unithriftNotificationBox";
-    alertBox.style.cssText = "position:fixed;bottom:24px;right:24px;background:#1e1e24;color:#fff;padding:16px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.3);z-index:9999;max-width:320px;border-left:4px solid #10b981;font-family:sans-serif;";
-    document.body.appendChild(alertBox);
-  }
-  
-  alertBox.innerHTML = `
-    <div style="font-weight:700;margin-bottom:4px;font-size:0.9rem;color:#10b981;">New Message from ${sender}</div>
-    <div style="font-size:0.85rem;color:#d1d5db;">${message}</div>
-  `;
-  
-  setTimeout(() => {
-    const box = document.getElementById("unithriftNotificationBox");
-    if (box) box.remove();
-  }, 4500);
-}
-
-// Chat Form Submission
 if (chatForm) {
   chatForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+
     const text = chatInput.value.trim();
     if (!text) return;
 
-    if (!currentProduct || !(currentProduct.seller_id || currentProduct.user_id)) {
-      alert("Routing failure: Target identity reference context missing.");
+    if (!activeRoomId) {
+      alert("Chat room is not ready yet. Please wait.");
       return;
     }
 
-    const sellerId = currentProduct.seller_id || currentProduct.user_id;
+    if (!localStorage.getItem("unithrift_session_token")) {
+      return alert("Session expired. Please log in again.");
+    }
 
-    appendMessageToUI(text, "sent", new Date());
     if (chatInput) chatInput.value = "";
 
     try {
-      // Post cleanly to archived schema models container metrics endpoints
-      const targetEndpoint = activeRoomId ? `/api/chat/rooms/${activeRoomId}/messages` : '/api/chats/archive';
-      await fetch(targetEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem("unithrift_session_token")}`
-        },
-        body: JSON.stringify({
-          product_id: productId,
-          seller_id: sellerId,
-          message_text: text,
-          message: text
-        })
-      });
+      const response = await authFetch(
+        `/api/chat/rooms/${activeRoomId}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message_text: text
+          })
+        }
+      );
 
-      if (typeof supabase !== 'undefined') {
-        const deliveryTargetChannel = supabase.channel(`notifications:${sellerId}`);
-        await deliveryTargetChannel.subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
-            await deliveryTargetChannel.send({
-              type: 'broadcast',
-              event: 'new_msg_alert',
-              payload: { 
-                msg: text, 
-                productId: productId,
-                senderId: currentUserId,
-                senderName: currentUserName || "Another Student"
-              }
-            });
-          }
-        });
+      const result = await response.json();
+
+      if (result.success || response.ok) {
+        await fetchMessages();
+      } else {
+        console.error("Failed to send message:", result.message);
       }
+
     } catch (err) {
-      console.error("Transmission execution system pipeline error: ", err);
+      console.error("Transmission execution system pipeline error:", err);
     }
   });
 }
 
-// ======================================
-// INITIALIZATION EXECUTION ROUTINE
-// ======================================
 if (typeof productId !== 'undefined' && productId) {
   loadProduct();
 } else if (productTitle) {

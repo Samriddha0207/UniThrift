@@ -100,11 +100,6 @@ async function tryRefreshToken() {
 
 // ======================================
 // AUTHENTICATED FETCH (attaches token, relays refresh, retries once on 401)
-// ======================================
-// This is the single place every authenticated request should go through.
-// Access tokens expire (Supabase default: 1 hour). Without this helper,
-// any request made after that point — including avatar/document uploads —
-// fails with "Session expired" and never recovers on its own.
 async function authFetch(url, options = {}) {
     const token        = localStorage.getItem("unithrift_session_token");
     const refreshToken = localStorage.getItem("unithrift_refresh_token");

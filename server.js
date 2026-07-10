@@ -14,13 +14,14 @@ const { sendVerificationOTP } = require('./services/emailservice');
 
 const app    = express();
 const PORT   = process.env.PORT || 3000;
-const DISABLE_TURNSTILE = true; // Set to false before deployment
+const DISABLE_TURNSTILE = true; 
+
 // =========================================================================
-// 1. CONFIG — all secrets from .env
+// CONFIG — secrets from .env
 // =========================================================================
 const SUPABASE_URL      = process.env.SUPABASE_URL?.trim();
 const SUPABASE_KEY      = process.env.SUPABASE_SERVICE_KEY?.trim();
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY?.trim(); // safe to expose to the browser
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY?.trim(); 
 const JWT_SECRET   = process.env.SUPABASE_JWT_SECRET?.trim();
 const APP_URL      = process.env.APP_URL?.trim() || "http://localhost:3000";
 const GEOAPIFY_KEY = process.env.GEOAPIFY_API_KEY?.trim();
@@ -28,23 +29,24 @@ const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY?.trim();
 
 if (!SUPABASE_URL || !SUPABASE_KEY || !JWT_SECRET) {
     console.error("❌ Missing required environment variables. Check your .env file.");
-    console.error("   SUPABASE_URL:               ", !!SUPABASE_URL);
-    console.error("   SUPABASE_SERVICE_KEY:  ", !!SUPABASE_KEY);
-    console.error("   SUPABASE_JWT_SECRET:        ", !!JWT_SECRET);
     process.exit(1);
 }
+
 const supabase = createClient(
     SUPABASE_URL,
     SUPABASE_KEY,
     { auth: { autoRefreshToken: false, persistSession: false } }
 );
+
 const supabaseAuth = createClient(
     SUPABASE_URL,
     SUPABASE_ANON_KEY,
     { auth: { autoRefreshToken: false, persistSession: false } }
 );
+
 const GEMINI_MODEL = "gemini-2.5-flash";
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
 async function askGemini(parts) {
     const response = await genAI.models.generateContent({
         model: GEMINI_MODEL,
@@ -58,6 +60,7 @@ function extractJson(text) {
     if (!match) throw new Error('No JSON found in Gemini response');
     return JSON.parse(match[0]);
 }
+
 async function verifyProductWithAI(title, description, imageUrls) {
     try {
         const mainImageResp = await fetch(imageUrls[0]);
@@ -93,6 +96,7 @@ async function verifyProductWithAI(title, description, imageUrls) {
         return { verified: false, reason: 'AI moderation is temporarily unavailable. Please try submitting again in a moment.' };
     }
 }
+
 async function generateProductInsights(product, reviews) {
     try {
         const reviewsText = (reviews && reviews.length > 0)
@@ -132,12 +136,14 @@ Return ONLY JSON, no markdown, in this exact format:
         };
     }
 }
+
 async function createNotification(userId, message, type = 'info', referenceId = null) {
     const { error } = await supabase.from('notifications').insert({
         user_id: userId, message, type, reference_id: referenceId, read: false
     });
     if (error) console.error('createNotification error:', error.message);
 }
+
 async function verifyTurnstile(token, remoteIp) {
     if (!TURNSTILE_SECRET_KEY) {
         console.error('TURNSTILE_SECRET_KEY is not configured.');
@@ -163,6 +169,7 @@ async function verifyTurnstile(token, remoteIp) {
         return false;
     }
 }
+
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const ALLOWED_DOC_TYPES   = [...ALLOWED_IMAGE_TYPES, 'application/pdf'];
 
@@ -184,16 +191,16 @@ function docOrImageFilter(req, file, cb) {
 
 const uploadImage = multer({
     storage: multer.memoryStorage(),
-    limits:  { fileSize: 5 * 1024 * 1024 },   // 5 MB for avatars/product images
+    limits:  { fileSize: 5 * 1024 * 1024 },   
     fileFilter: imageOnlyFilter
 });
 
 const uploadDoc = multer({
     storage: multer.memoryStorage(),
-    limits:  { fileSize: 15 * 1024 * 1024 },  // 15 MB for ID/PAN docs
+    limits:  { fileSize: 15 * 1024 * 1024 },  
     fileFilter: docOrImageFilter
 });
-// 3. AUTH HELPER — auto-refreshes expired tokens via X-Refresh-Token header
+
 class AuthError extends Error {
     constructor(message) {
         super(message);
@@ -232,6 +239,7 @@ async function getUserFromToken(req) {
 
     return { id: refreshData.user.id, email: refreshData.user.email };
 }
+
 async function requireAdmin(req) {
     const user = await getUserFromToken(req);
     const { data: profile, error } = await supabase
@@ -244,6 +252,7 @@ async function requireAdmin(req) {
     }
     return user;
 }
+
 function sanitizeString(str, maxLength = 500) {
     if (typeof str !== 'string') return '';
     return str.trim().slice(0, maxLength);
@@ -253,7 +262,10 @@ function sanitizeNumber(val) {
     const n = Number(val);
     return isNaN(n) || n < 0 ? null : n;
 }
-// 5. SECURITY MIDDLEWARE
+
+// =========================================================================
+// SECURITY MIDDLEWARE
+// =========================================================================
 app.use(helmet({
     contentSecurityPolicy: false
 }));
@@ -312,6 +324,7 @@ const generalLimiter = rateLimit({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use('/api/', generalLimiter);
+
 app.use((req, res, next) => {
     const originalJson = res.json.bind(res);
     res.json = (body) => {
@@ -327,7 +340,10 @@ app.use((req, res, next) => {
 app.use('/css',    express.static(path.join(__dirname, 'css')));
 app.use('/js',     express.static(path.join(__dirname, 'js')));
 app.use('/images', express.static(path.join(__dirname, 'images')));
-// 6. FRONTEND ROUTES
+
+// =========================================================================
+// FRONTEND ROUTES
+// =========================================================================
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.get('/',            (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
 app.get('/login.html',  (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
@@ -337,7 +353,7 @@ app.get('/product',     (req, res) => sendWithSupabaseConfig(res, 'product.html'
 app.get('/product.html',(req, res) => sendWithSupabaseConfig(res, 'product.html'));
 app.get('/profile',     (req, res) => res.sendFile(path.join(__dirname, 'profile.html')));
 app.get('/admin',       (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
-app.get('/checkout', (req, res) => {res.sendFile(path.join(__dirname, 'checkout.html'));});
+app.get('/checkout',    (req, res) => {res.sendFile(path.join(__dirname, 'checkout.html'));});
 app.get('/sell',        (req, res) => res.sendFile(path.join(__dirname, 'sell.html')));
 app.get('/about',       (req, res) => res.sendFile(path.join(__dirname, 'about.html')));
 app.get('/terms',       (req, res) => res.sendFile(path.join(__dirname, 'terms.html')));
@@ -358,7 +374,10 @@ function sendWithSupabaseConfig(res, fileName) {
     });
 }
 app.get('/updates', (req, res) => sendWithSupabaseConfig(res, 'updates.html'));
-// 7. API ROUTES--
+
+// =========================================================================
+// AUTHENTICATION API ENDPOINTS
+// =========================================================================
 app.post('/api/auth/google', async (req, res) => {
     try {
         const { data, error } = await supabaseAuth.auth.signInWithOAuth({
@@ -372,7 +391,6 @@ app.post('/api/auth/google', async (req, res) => {
     }
 });
 
-// ---- REFRESH TOKEN ----
 app.post('/api/auth/refresh', async (req, res) => {
     const { refresh_token } = req.body;
     if (!refresh_token) return res.status(400).json({ success: false, message: 'No refresh token' });
@@ -389,7 +407,6 @@ app.post('/api/auth/refresh', async (req, res) => {
     }
 });
 
-// ---- SIGNUP ----
 app.post('/api/signup', signupLimiter, async (req, res) => {
     let { username, email, password } = req.body;
     const turnstileToken = req.body['cf-turnstile-response'];
@@ -422,25 +439,16 @@ app.post('/api/signup', signupLimiter, async (req, res) => {
 
         const userId = signUpData?.user?.id;
         
-     try {
-    console.log("========== SIGNUP OTP ==========");
-    console.log("User ID:", userId);
-    console.log("Email:", email);
-
-    await issueSignupOtp(email, userId, username);
-
-    console.log("OTP issued successfully.");
-} catch (emailErr) {
-    console.error("========== OTP ERROR ==========");
-    console.error(emailErr);
-    console.error("===============================");
-
-    return res.status(201).json({
-        success: true,
-        message: 'Account created, but we could not send the verification email. Please use "Resend code" on the verification page.',
-        email
-    });
-}
+        try {
+            await issueSignupOtp(email, userId, username);
+        } catch (emailErr) {
+            console.error("OTP Email Dispatch Error:", emailErr);
+            return res.status(201).json({
+                success: true,
+                message: 'Account created, but we could not send the verification email. Please use "Resend code" on the verification page.',
+                email
+            });
+        }
 
         return res.status(201).json({
             success: true,
@@ -451,18 +459,11 @@ app.post('/api/signup', signupLimiter, async (req, res) => {
         return res.status(400).json({ success: false, message: error.message });
     }
 });
+
 async function issueSignupOtp(email, userId, username) {
     const otp = generateOTP();
     const otpHash = hashOTP(otp);
     const expiresAt = createExpiry(10);
-
-    console.log("Creating OTP:");
-    console.log({
-        userId,
-        email,
-        otpHash,
-        expiresAt
-    });
 
     await supabase
         .from("email_verifications")
@@ -479,19 +480,11 @@ async function issueSignupOtp(email, userId, username) {
             attempts: 0
         });
 
-    if (otpError) {
-        console.error("FULL INSERT ERROR:");
-        console.error(otpError);
-        throw otpError;
-    }
-
-    console.log("OTP saved to database.");
+    if (otpError) throw otpError;
 
     await sendVerificationOTP(email, otp);
-
-    console.log("OTP email sent.");
 }
-// ---- VERIFY SIGNUP OTP ----
+
 async function handleVerifyEmail(req, res) {
     let { email, otp } = req.body;
     if (!email || !otp)
@@ -540,9 +533,8 @@ async function handleVerifyEmail(req, res) {
     }
 }
 app.post('/api/verify-email', otpVerifyLimiter, handleVerifyEmail);
-app.post('/api/verify-otp',   otpVerifyLimiter, handleVerifyEmail); // legacy alias
+app.post('/api/verify-otp',   otpVerifyLimiter, handleVerifyEmail); 
 
-// ---- RESEND SIGNUP OTP ----
 app.post('/api/resend-otp', otpResendLimiter, async (req, res) => {
     let { email } = req.body;
     if (!email)
@@ -572,7 +564,6 @@ app.post('/api/resend-otp', otpResendLimiter, async (req, res) => {
     }
 });
 
-// ---- LOGIN ----
 app.post('/api/login', loginLimiter, async (req, res) => {
     let { loginIdentifier, password } = req.body;
     const turnstileToken = req.body['cf-turnstile-response'];
@@ -629,7 +620,9 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     }
 });
 
-// ---- GET PROFILE ----
+// =========================================================================
+// PROFILE API ENDPOINTS
+// =========================================================================
 app.get('/api/profile', async (req, res) => {
     try {
         const user = await getUserFromToken(req);
@@ -647,7 +640,6 @@ app.get('/api/profile', async (req, res) => {
     }
 });
 
-// ---- SAVE PROFILE ----
 app.post('/api/profile/save', async (req, res) => {
     try {
         const user = await getUserFromToken(req);
@@ -665,7 +657,6 @@ app.post('/api/profile/save', async (req, res) => {
     }
 });
 
-// ---- AVATAR UPLOAD ----
 app.post('/api/profile/avatar', uploadLimiter, uploadImage.single('avatar'), async (req, res) => {
     try {
         const user = await getUserFromToken(req);
@@ -692,7 +683,6 @@ app.post('/api/profile/avatar', uploadLimiter, uploadImage.single('avatar'), asy
     }
 });
 
-// ---- STUDENT VERIFICATION UPLOAD ----
 app.post('/api/profile/verify/student', uploadLimiter, uploadDoc.single('collegeId'), async (req, res) => {
     try {
         const user = await getUserFromToken(req);
@@ -707,18 +697,15 @@ app.post('/api/profile/verify/student', uploadLimiter, uploadDoc.single('college
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage.from('verification').getPublicUrl(fileName);
-        const { data, error } = await supabase
-  .from("profiles")
-  .upsert({
-    id: user.id,
-    college_id_url: publicUrl,
-    student_verified: false,
-    updated_at: new Date()
-  })
-  .select();
+        const { error } = await supabase
+            .from("profiles")
+            .upsert({
+                id: user.id,
+                college_id_url: publicUrl,
+                student_verified: false,
+                updated_at: new Date()
+            });
 
-console.log("UPSERT DATA:", data);
-console.log("UPSERT ERROR:", error);
         if (error) throw error;
 
         await createNotification(user.id,
@@ -731,7 +718,6 @@ console.log("UPSERT ERROR:", error);
     }
 });
 
-// ---- SELLER VERIFICATION UPLOAD ----
 app.post('/api/profile/verify/seller', uploadLimiter, uploadDoc.fields([
     { name: 'panCard',   maxCount: 1 },
     { name: 'paymentQr', maxCount: 1 }
@@ -778,11 +764,10 @@ app.post('/api/profile/verify/seller', uploadLimiter, uploadDoc.fields([
     }
 });
 
-// ---- DELETE / RESET A VERIFICATION DOCUMENT ----
 app.delete('/api/profile/verify/:type', async (req, res) => {
     try {
         const user = await getUserFromToken(req);
-        const type = req.params.type; // 'student' | 'pan' | 'qr'
+        const type = req.params.type; 
 
         const fieldMap = {
             student: { urlField: 'college_id_url', extra: { student_verified: false } },
@@ -814,8 +799,10 @@ app.delete('/api/profile/verify/:type', async (req, res) => {
         return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
-// ADMIN — MANUAL VERIFICATION REVIEW
--
+
+// =========================================================================
+// ADMIN CONTROL API ENDPOINTS
+// =========================================================================
 app.get('/api/admin/check', async (req, res) => {
     try {
         await requireAdmin(req);
@@ -824,6 +811,7 @@ app.get('/api/admin/check', async (req, res) => {
         return res.json({ success: true, isAdmin: false });
     }
 });
+
 app.get('/api/admin/verifications', async (req, res) => {
     try {
         await requireAdmin(req);
@@ -837,6 +825,7 @@ app.get('/api/admin/verifications', async (req, res) => {
         return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
+
 app.post('/api/admin/verifications/:userId/:type/:action', async (req, res) => {
     try {
         const admin = await requireAdmin(req);
@@ -873,7 +862,9 @@ app.post('/api/admin/verifications/:userId/:type/:action', async (req, res) => {
     }
 });
 
-// ---- MY LISTINGS ----
+// =========================================================================
+// LISTING API ENDPOINTS
+// =========================================================================
 app.get('/api/profile/my-listings', async (req, res) => {
     try {
         const user = await getUserFromToken(req);
@@ -901,7 +892,6 @@ app.get('/api/profile/my-listings', async (req, res) => {
     }
 });
 
-// ---- GET SELLER INFO ----
 app.get('/api/user/:id', async (req, res) => {
     try {
         const { data: profile, error } = await supabase
@@ -914,7 +904,6 @@ app.get('/api/user/:id', async (req, res) => {
     }
 });
 
-// ---- FETCH ALL PRODUCTS ----
 app.get('/api/products', async (req, res) => {
     try {
         const { data: products, error: productError } = await supabase
@@ -940,7 +929,6 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// ---- FETCH SINGLE PRODUCT ----
 app.get('/api/products/:id', async (req, res) => {
     try {
         const { data: product, error } = await supabase
@@ -952,7 +940,6 @@ app.get('/api/products/:id', async (req, res) => {
     }
 });
 
-// ---- FETCH PRODUCT IMAGES ----
 app.get('/api/products/:id/images', async (req, res) => {
     try {
         const { data: images, error } = await supabase
@@ -964,7 +951,6 @@ app.get('/api/products/:id/images', async (req, res) => {
     }
 });
 
-// ---- FETCH REVIEWS ----
 app.get('/api/products/:id/reviews', async (req, res) => {
     try {
         const { data: reviews, error } = await supabase
@@ -976,7 +962,6 @@ app.get('/api/products/:id/reviews', async (req, res) => {
     }
 });
 
-// ---- POST REVIEW ----
 app.post('/api/products/:id/reviews', async (req, res) => {
     try {
         const user = await getUserFromToken(req);
@@ -1000,7 +985,6 @@ app.post('/api/products/:id/reviews', async (req, res) => {
     }
 });
 
-// ---- AI PRODUCT + REVIEW INSIGHTS ----
 app.get('/api/products/:id/ai-insights', async (req, res) => {
     try {
         const { data: product, error: prodError } = await supabase
@@ -1011,14 +995,12 @@ app.get('/api/products/:id/ai-insights', async (req, res) => {
             .from('reviews').select('rating, review_text').eq('product_id', req.params.id);
         const reviewCount = (reviews || []).length;
 
-        // Reuse a cached analysis if nothing has changed since it was generated
         if (product.ai_insights && product.ai_insights_review_count === reviewCount) {
             return res.json({ success: true, insights: product.ai_insights, cached: true });
         }
 
         const insights = await generateProductInsights(product, reviews);
 
-        // Best-effort cache write — safe to skip if the columns don't exist yet
         try {
             await supabase.from('products')
                 .update({ ai_insights: insights, ai_insights_review_count: reviewCount })
@@ -1034,75 +1016,69 @@ app.get('/api/products/:id/ai-insights', async (req, res) => {
     }
 });
 
-// ---- CREATE LISTING (WITH GEMINI MODERATION INTEGRATION) ----
-app.post('/api/listings/create', async (req, res) => { //[cite: 1]
-    try { //[cite: 1]
-        const user = await getUserFromToken(req); //[cite: 1]
+app.post('/api/listings/create', async (req, res) => { 
+    try { 
+        const user = await getUserFromToken(req); 
 
         const turnstileToken = req.body['cf-turnstile-response'];
         const humanVerified = await verifyTurnstile(turnstileToken, req.ip);
         if (!humanVerified)
             return res.status(400).json({ success: false, message: 'Bot verification failed. Please try again.' });
 
-        // Map and sanitize all incoming parameters from your listing system
-        const title           = sanitizeString(req.body.title           || '', 200); //[cite: 1]
-        const category        = sanitizeString(req.body.category        || '', 100); //[cite: 1]
-        const condition       = sanitizeString(req.body.condition       || '', 50); //[cite: 1]
-        const description     = sanitizeString(req.body.description     || '', 2000); //[cite: 1]
-        const payment_methods = sanitizeString(req.body.payment_methods || '', 200); //[cite: 1]
-        const collection_point= sanitizeString(req.body.collection_point|| '', 300); //[cite: 1]
-        const contact_no      = sanitizeString(req.body.contact_no      || '', 20); //[cite: 1]
-        const delivery_date   = sanitizeString(req.body.delivery_date   || '', 20); //[cite: 1]
-        const price           = sanitizeNumber(req.body.price); //[cite: 1]
-        const image_urls      = Array.isArray(req.body.image_urls) ? req.body.image_urls : []; //[cite: 1]
+        const title           = sanitizeString(req.body.title           || '', 200); 
+        const category        = sanitizeString(req.body.category        || '', 100); 
+        const condition       = sanitizeString(req.body.condition       || '', 50); 
+        const description     = sanitizeString(req.body.description     || '', 2000); 
+        const payment_methods = sanitizeString(req.body.payment_methods || '', 200); 
+        const collection_point= sanitizeString(req.body.collection_point|| '', 300); 
+        const contact_no      = sanitizeString(req.body.contact_no      || '', 20); 
+        const delivery_date   = sanitizeString(req.body.delivery_date   || '', 20); 
+        const price           = sanitizeNumber(req.body.price); 
+        const image_urls      = Array.isArray(req.body.image_urls) ? req.body.image_urls : []; 
 
-        // 1. Basic Validation
-        if (!title)    return res.status(400).json({ success: false, message: 'Title is required.' }); //[cite: 1]
-        if (!category) return res.status(400).json({ success: false, message: 'Category is required.' }); //[cite: 1]
-        if (!price)    return res.status(400).json({ success: false, message: 'Valid price is required.' }); //[cite: 1]
-        if (image_urls.length === 0) //[cite: 1]
-            return res.status(400).json({ success: false, message: 'At least one image is required.' }); //[cite: 1]
+        if (!title)    return res.status(400).json({ success: false, message: 'Title is required.' }); 
+        if (!category) return res.status(400).json({ success: false, message: 'Category is required.' }); 
+        if (!price)    return res.status(400).json({ success: false, message: 'Valid price is required.' }); 
+        if (image_urls.length === 0) 
+            return res.status(400).json({ success: false, message: 'At least one image is required.' }); 
 
-        // 2. TRIGGER GEMINI AI VERIFICATION[cite: 1]
-        const aiResult = await verifyProductWithAI(title, description, image_urls); //[cite: 1]
+        const aiResult = await verifyProductWithAI(title, description, image_urls); 
 
-        if (!aiResult.verified) { //[cite: 1]
-            return res.status(400).json({  //[cite: 1]
-                success: false,  //[cite: 1]
-                message: `Product rejected by AI: ${aiResult.reason}`  //[cite: 1]
-            }); //[cite: 1]
-        } //[cite: 1]
+        if (!aiResult.verified) { 
+            return res.status(400).json({  
+                success: false,  
+                message: `Product rejected by AI: ${aiResult.reason}`  
+            }); 
+        } 
 
-        // 3. Proceed with existing DB logic if verified[cite: 1]
-        const { data: product, error } = await supabase //[cite: 1]
-            .from('products') //[cite: 1]
-            .insert({  //[cite: 1]
-                user_id: user.id,  //[cite: 1]
-                title,  //[cite: 1]
-                category,  //[cite: 1]
-                price,  //[cite: 1]
-                condition, //[cite: 1]
-                description,  //[cite: 1]
-                delivery_date, //[cite: 1]
-                payment_methods, //[cite: 1]
-                collection_point, //[cite: 1]
-                contact_no, //[cite: 1]
-                ai_verified: true, //[cite: 1]
-                ai_score: aiResult.confidence  //[cite: 1]
-            }) //[cite: 1]
-            .select().single(); //[cite: 1]
-        if (error) throw error; //[cite: 1]
+        const { data: product, error } = await supabase 
+            .from('products') 
+            .insert({  
+                user_id: user.id,  
+                title,  
+                category,  
+                price,  
+                condition, 
+                description,  
+                delivery_date, 
+                payment_methods, 
+                collection_point, 
+                contact_no, 
+                ai_verified: true, 
+                ai_score: aiResult.confidence  
+            }) 
+            .select().single(); 
+        if (error) throw error; 
 
-        await supabase.from('product_images') //[cite: 1]
-            .insert(image_urls.map(url => ({ product_id: product.id, image_url: url }))); //[cite: 1]
+        await supabase.from('product_images') 
+            .insert(image_urls.map(url => ({ product_id: product.id, image_url: url }))); 
 
-        return res.json({ success: true, product }); //[cite: 1]
-    } catch (error) { //[cite: 1]
-        return res.status(error.status || 500).json({ success: false, message: error.message }); //[cite: 1]
-    } //[cite: 1]
-}); //[cite: 1]
+        return res.json({ success: true, product }); 
+    } catch (error) { 
+        return res.status(error.status || 500).json({ success: false, message: error.message }); 
+    } 
+}); 
 
-// ---- UPLOAD LISTING IMAGE ----
 app.post('/api/listings/upload-image', uploadLimiter, async (req, res) => {
     try {
         const user = await getUserFromToken(req);
@@ -1130,23 +1106,7 @@ app.post('/api/listings/upload-image', uploadLimiter, async (req, res) => {
 });
 
 // =========================================================================
-// 8. GLOBAL ERROR HANDLER — catches multer errors cleanly
-// =========================================================================
-app.use((err, req, res, next) => {
-    if (err instanceof multer.MulterError) {
-        if (err.code === 'LIMIT_FILE_SIZE')
-            return res.status(400).json({ success: false, message: 'File is too large.' });
-        return res.status(400).json({ success: false, message: err.message });
-    }
-    if (err) {
-        return res.status(400).json({ success: false, message: err.message });
-    }
-    next();
-});
-
-// =========================================================================
 // GEOAPIFY LOCATION AUTOCOMPLETE ROUTES
-// (kept server-side so the API key is never exposed to the browser)
 // =========================================================================
 app.get('/api/geoapify/autocomplete', async (req, res) => {
     try {
@@ -1178,7 +1138,7 @@ app.get('/api/geoapify/autocomplete', async (req, res) => {
 });
 
 // =========================================================================
-// NOTIFICATIONS ROUTES
+// NOTIFICATIONS API ENDPOINTS
 // =========================================================================
 app.get('/api/notifications', async (req, res) => {
     try {
@@ -1224,7 +1184,7 @@ app.post('/api/notifications/read-all', async (req, res) => {
 });
 
 // =========================================================================
-// CHAT ROUTES
+// CHAT API ENDPOINTS
 // =========================================================================
 app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
 
@@ -1232,16 +1192,56 @@ app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
 app.post('/api/chat/room', async (req, res) => {
     try {
         const user = await getUserFromToken(req);
-        const { product_id } = req.body;
+        const { product_id, buyer_id } = req.body;
         if (!product_id) return res.status(400).json({ success: false, message: 'product_id required' });
 
         const { data: product, error: prodError } = await supabase
             .from('products').select('user_id').eq('id', product_id).single();
         if (prodError || !product) return res.status(404).json({ success: false, message: 'Product not found' });
 
-        if (product.user_id === user.id)
-            return res.status(400).json({ success: false, message: "You can't chat with yourself." });
+        // If the logged-in user is the seller of the product
+        if (product.user_id === user.id) {
+            // If seller requested a specific buyer
+            if (buyer_id) {
+                const { data: existing, error: findError } = await supabase
+                    .from('chat_rooms')
+                    .select('id')
+                    .eq('product_id', product_id)
+                    .eq('buyer_id', buyer_id)
+                    .maybeSingle();
+                if (findError) throw findError;
+                if (!existing) {
+                    return res.status(404).json({ success: false, message: "Chat room with this buyer not found." });
+                }
+                return res.json({ success: true, room_id: existing.id });
+            }
 
+            // Inspect all active rooms for this listing
+            const { data: rooms, error: findRoomsError } = await supabase
+                .from('chat_rooms')
+                .select('id, buyer_id')
+                .eq('product_id', product_id);
+
+            if (findRoomsError) throw findRoomsError;
+
+            if (!rooms || rooms.length === 0) {
+                return res.status(404).json({ success: false, message: "No active buyer chats found for this listing yet." });
+            }
+
+            // If exactly one buyer exists, safely return that room
+            if (rooms.length === 1) {
+                return res.json({ success: true, room_id: rooms[0].id });
+            }
+
+            // If multiple buyers exist, do not return an arbitrary room
+            return res.status(400).json({ 
+                success: false, 
+                code: "MULTIPLE_BUYERS", 
+                message: "Multiple buyers are interested in this item. Please use the main Inbox on the /chat page to manage these conversations." 
+            });
+        }
+
+        // Keep the buyer flow strictly unchanged
         const { data: existing } = await supabase
             .from('chat_rooms').select('id')
             .eq('product_id', product_id).eq('buyer_id', user.id).maybeSingle();
@@ -1324,8 +1324,21 @@ app.post('/api/chat/rooms/:room_id/messages', async (req, res) => {
     }
 });
 
-// START SERVER (Keep this at the very bottom)
 // =========================================================================
+// GLOBAL ERROR HANDLER
+// =========================================================================
+app.use((err, req, res, next) => {
+    if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE')
+            return res.status(400).json({ success: false, message: 'File is too large.' });
+        return res.status(400).json({ success: false, message: err.message });
+    }
+    if (err) {
+        return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 UniThrift running at http://localhost:${PORT}`);
 });
