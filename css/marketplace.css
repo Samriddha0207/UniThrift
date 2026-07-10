@@ -21,8 +21,8 @@ body.dark-theme {
     --card: #121214;             /* Slate-tinted ultra-dark charcoal */
     --card-hover: #1a1a1e;       /* Crisper elevation state */
     --text: #f3f4f6;             /* Clean premium off-white */
-    --secondary: #8e939e;        /* Balanced muted text, no heavy blue tint */
-    --accent: #6366f1;           /* Vibrant Indigo */
+    --secondary: #8e939e;        /* Balanced muted text */
+    --accent: #6366f1;           /* Vibrant Indigo (Primary Theme Accent) */
     --accent-hover: #4f46e5;
     --navbar: rgba(5, 5, 5, 0.85); /* Frosty pure black sticky nav */
     --border: rgba(255, 255, 255, 0.07); /* Razor-thin premium border */
@@ -30,15 +30,15 @@ body.dark-theme {
 }
 
 body.light-theme {
-    --bg: #f8f5ff;                       /* Soft lavender tint canvas from login.css */
-    --card: rgba(255, 255, 255, 0.42);   /* Glassmorphism translucent card from login.css */
+    --bg: #f8f5ff;                       /* Soft lavender tint canvas */
+    --card: rgba(255, 255, 255, 0.42);   /* Glassmorphism translucent card */
     --card-hover: rgba(255, 255, 255, 0.75); /* Elevated glass state */
-    --text: #2f2545;                     /* Deep purple charcoal text from login.css */
-    --secondary: #6d6486;                /* Muted lavender purple from login.css */
-    --accent: #8b5cf6;                   /* Primary purple from login.css */
-    --accent-hover: #7c3aed;             /* Primary deep dark purple from login.css */
+    --text: #2f2545;                     /* Deep purple charcoal text */
+    --secondary: #6d6486;                /* Muted lavender purple */
+    --accent: #8b5cf6;                   /* Primary purple */
+    --accent-hover: #7c3aed;             /* Primary deep dark purple */
     --navbar: rgba(255, 255, 255, 0.45); /* Soft frosty lavender glass navigation */
-    --border: rgba(170, 150, 255, 0.25); /* Gentle amethyst line boundary from login.css */
+    --border: rgba(170, 150, 255, 0.25); /* Gentle amethyst line boundary */
     --shadow: rgba(88, 62, 175, 0.12);   /* Theme-matched branding purple drop shadow */
 }
 
@@ -113,7 +113,7 @@ body.light-theme .filter-group select:focus {
     box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
 }
 
-/* Search bar inside hero; kept generic for global reuse */
+/* Search Container */
 .search-container {
     width: 100%;
     max-width: 620px;
@@ -188,7 +188,7 @@ body.dark-theme .search-container input:focus {
     gap: 14px;
 }
 
-/* Theme toggle switch (pill with sun/moon) */
+/* Theme Switcher */
 .theme-switch {
     position: relative;
     width: 64px;
@@ -406,6 +406,7 @@ body.light-theme .theme-switch-knob {
     overflow-x: auto;
     scrollbar-width: none;
     padding: 4px 6px;
+    align-items: center; /* Ensures category filters align perfectly */
 }
 
 .trending-list::-webkit-scrollbar {
@@ -451,7 +452,7 @@ body.light-theme .theme-switch-knob {
 .trend-pill.active .trend-icon {
     background: var(--accent);
     border-color: var(--accent);
-    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
 }
 
 /* =========================================
@@ -479,7 +480,12 @@ body.light-theme .theme-switch-knob {
     position: sticky;
     top: 100px;
     height: fit-content;
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.15), 0 0 35px rgba(168, 85, 247, 0.6);
+    box-shadow: 0 4px 20px var(--shadow); /* Dropped hyper-bright neon glow to prevent distraction */
+    transition: border-color 0.2s ease;
+}
+
+.sidebar:hover {
+    border-color: rgba(99, 102, 241, 0.25); /* Elegant gentle interactive highlight */
 }
 
 .sidebar-header h2 {
@@ -664,7 +670,7 @@ body.light-theme .theme-switch-knob {
 }
 
 /* =========================================
-   PRODUCTS
+   PRODUCTS AREA & GRID
 ========================================= */
 .products-area {
     flex: 1;
@@ -672,6 +678,9 @@ body.light-theme .theme-switch-knob {
 
 .section-title {
     margin-bottom: 35px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px; /* Fixes text stacking alignment */
 }
 
 .section-title h2 {
@@ -683,16 +692,23 @@ body.light-theme .theme-switch-knob {
 .section-title p {
     color: var(--secondary);
     font-size: 0.95rem;
-    margin-top: 6px;
+    margin-top: 0;
 }
 
+/* Dynamic responsive product grid layout */
 .products-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 30px;
+    align-items: stretch; /* Forces uniform column height alignment */
 }
 
+/* =========================================
+   PRODUCT CARDS (Polished Structure)
+========================================= */
 .product-card {
+    display: flex;
+    flex-direction: column;
     background: var(--card);
     border-radius: 18px;
     overflow: hidden;
@@ -703,36 +719,61 @@ body.light-theme .theme-switch-knob {
 
 .product-card:hover {
     transform: translateY(-6px);
-    box-shadow: 0 25px 60px var(--shadow), inset 0 1px rgba(255, 255, 255, 0.65);
-    border-color: rgba(139, 92, 246, 0.3);
+    box-shadow: 0 20px 40px var(--shadow);
+    border-color: rgba(99, 102, 241, 0.4); /* Matches Indigo brand system */
 }
 
+/* Unified Aspect Ratio Container for user uploads */
 .product-image-wrap {
-    background: #ffffff;
-    padding: 14px;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3; /* Imposes a fixed aspect ratio regardless of user image */
+    background: #18181c; /* Soft dark canvas instead of harsh white background */
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid var(--border);
 }
 
+body.light-theme .product-image-wrap {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+/* Force image handling via 'cover' configuration */
 .product-image {
     width: 100%;
-    height: 170px;
-    object-fit: contain;
+    height: 100%;
+    object-fit: cover; /* Prevents stretching and crops cleanly into container */
     display: block;
-    transition: transform 0.5s ease;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .product-card:hover .product-image {
-    transform: scale(1.04);
+    transform: scale(1.05);
 }
 
 .product-content {
-    padding: 16px 18px 20px 18px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Pushes action items downwards uniformly */
 }
 
 .product-content h3 {
-    font-size: 1rem;
+    font-size: 1.05rem;
     font-weight: 600;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
     line-height: 1.4;
+    color: var(--text);
+}
+
+/* Metadata Styling */
+.meta-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
 }
 
 .category, .condition {
@@ -743,16 +784,16 @@ body.light-theme .theme-switch-knob {
     border-radius: 20px;
     background: var(--bg);
     color: var(--secondary);
-    margin-right: 6px;
-    margin-bottom: 12px;
+    margin: 0;
     border: 1px solid var(--border);
 }
 
+/* Enhanced Typography Hierarchy */
 .price {
-    font-size: 1.15rem;
-    color: var(--accent);
+    font-size: 1.3rem; /* Made slightly larger for immediate visibility */
+    color: var(--accent); /* Now pulls system theme Indigo */
     font-weight: 700;
-    margin: 2px 0 6px 0;
+    margin: 0 0 10px 0;
 }
 
 .product-location {
@@ -761,7 +802,8 @@ body.light-theme .theme-switch-knob {
     gap: 6px;
     font-size: 0.8rem;
     color: var(--secondary);
-    margin-bottom: 14px;
+    margin-bottom: 18px;
+    margin-top: auto; /* Aligns metadata lines perfectly if titles span different lines */
 }
 
 .product-location i {
@@ -769,22 +811,24 @@ body.light-theme .theme-switch-knob {
     font-size: 0.75rem;
 }
 
+/* Card Button Components */
 .view-btn {
     width: 100%;
-    border: 1px solid var(--accent);
+    border: 1px solid var(--border);
     cursor: pointer;
     padding: 10px;
     border-radius: 10px;
-    background: transparent;
-    color: var(--accent);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text);
     font-weight: 600;
     font-size: 0.85rem;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
 }
 
 .view-btn:hover {
-    background: var(--accent);
-    color: white;
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
 }
 
 .add-cart-btn {
@@ -794,14 +838,15 @@ body.light-theme .theme-switch-knob {
     margin-top: 8px;
     padding: 12px;
     border-radius: 10px;
-    background: #10b981;
+    background: var(--accent); /* Replaced green accent color with brand Theme Indigo */
     color: white;
     font-weight: 600;
-    transition: opacity 0.2s, transform 0.1s;
+    font-size: 0.9rem;
+    transition: background 0.2s, transform 0.1s;
 }
 
 .add-cart-btn:hover {
-    filter: brightness(1.05);
+    background: var(--accent-hover);
 }
 
 .add-cart-btn:active {
@@ -817,7 +862,7 @@ body.light-theme .theme-switch-knob {
     display: none;
     justify-content: center;
     align-items: center;
-    background: rgba(34, 20, 70, 0.45);
+    background: rgba(5, 5, 5, 0.65);
     backdrop-filter: blur(8px);
     z-index: 3000;
 }
@@ -1057,7 +1102,7 @@ footer {
 .loader {
     width: 50px;
     height: 50px;
-    border: 4px solid rgba(139, 92, 246, 0.15);
+    border: 4px solid rgba(99, 102, 241, 0.15);
     border-top: 4px solid var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;

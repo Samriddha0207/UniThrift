@@ -36,6 +36,13 @@ const chatForm = document.getElementById("chatForm");
 const chatInput = document.getElementById("chatInput");
 const chatMessages = document.getElementById("chatMessages");
 const chatSellerName = document.getElementById("chatSellerName");
+const chatSellerAvatar = document.getElementById("chatSellerAvatar");
+const chatOnlineIndicator = document.getElementById("chatOnlineIndicator");
+const chatVerifiedBadge = document.getElementById("chatVerifiedBadge");
+const chatProductCard = document.getElementById("chatProductCard");
+const chatProductImage = document.getElementById("chatProductImage");
+const chatProductTitle = document.getElementById("chatProductTitle");
+const chatProductPrice = document.getElementById("chatProductPrice");
 
 // Cache targets for async operations
 let currentProduct = null;
@@ -411,13 +418,70 @@ window.addEventListener("click", (e) => {
 // ======================================
 // ENHANCED CHAT COMPONENT ENGINE
 // ======================================
-function appendMessageToUI(text, direction) {
+
+// Consistent with the IST-localized timestamps used elsewhere (rate-limit retry messaging)
+function formatMessageTime(dateInput) {
+  const date = dateInput ? new Date(dateInput) : new Date();
+  if (isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function appendMessageToUI(text, direction, timestamp) {
   if (!chatMessages) return;
   const msgDiv = document.createElement("div");
   msgDiv.classList.add("message", direction);
-  msgDiv.textContent = text;
+
+  const textSpan = document.createElement("span");
+  textSpan.className = "message-text";
+  textSpan.textContent = text;
+  msgDiv.appendChild(textSpan);
+
+  if (direction !== "system-msg") {
+    const timeSpan = document.createElement("span");
+    timeSpan.className = "message-time";
+    timeSpan.textContent = formatMessageTime(timestamp);
+    msgDiv.appendChild(timeSpan);
+  }
+
   chatMessages.appendChild(msgDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Fills the chat header (avatar / verified badge) and the compact product
+// card from data already loaded on the page — no extra API calls needed.
+function populateChatHeader() {
+  const sellerData = currentSeller?.seller || currentSeller;
+
+  if (chatSellerAvatar) {
+    const fallbackName = encodeURIComponent(sellerData?.full_name || sellerData?.username || "U");
+    chatSellerAvatar.src =
+      sellerData?.avatar_url ||
+      sellerData?.profile_picture ||
+      `https://ui-avatars.com/api/?name=${fallbackName}&background=1f2937&color=fff`;
+  }
+
+  if (chatVerifiedBadge) {
+    const isVerified = !!(sellerData?.seller_verified || sellerData?.student_verified);
+    chatVerifiedBadge.style.display = isVerified ? "inline" : "none";
+  }
+
+  // Presence isn't tracked yet; indicator defaults to online. Left as its
+  // own element so real presence data can be wired in later without
+  // touching the surrounding markup.
+  if (chatOnlineIndicator) chatOnlineIndicator.style.background = "#10b981";
+
+  if (currentProduct) {
+    if (chatProductImage) chatProductImage.src = mainImage?.src || "";
+    if (chatProductTitle) chatProductTitle.textContent = currentProduct.title || "Product";
+    if (chatProductPrice) {
+      chatProductPrice.textContent = `₹${Number(currentProduct.price).toLocaleString('en-IN')}`;
+    }
+    if (chatProductCard) chatProductCard.href = `/product.html?id=${productId}`;
+  }
 }
 
 // Structural Async Sync Channel Resolver History Engine
@@ -444,7 +508,8 @@ async function syncChatRoomHistory(token, targetSellerId) {
       chatMessages.innerHTML = '<div class="message system-msg">Welcome to campus chat! Protect your data.</div>';
       msgResult.messages.forEach(msg => {
         const direction = (msg.sender_id === currentUserId) ? "sent" : "received";
-        appendMessageToUI(msg.message_text || msg.message, direction);
+        const timestamp = msg.created_at || msg.inserted_at || msg.timestamp;
+        appendMessageToUI(msg.message_text || msg.message, direction, timestamp);
       });
     }
   } catch (err) {
@@ -461,9 +526,15 @@ if (chatWithSellerBtn) {
     const sellerData = currentSeller?.seller || currentSeller;
     const sellerName = sellerData?.full_name || sellerData?.username || "Seller";
     const targetedSellerId = currentProduct.seller_id || currentProduct.user_id;
-    
-    if (chatSellerName) chatSellerName.textContent = `Chat with ${sellerName}`;
-    if (chatPopup) chatPopup.style.display = "flex";
+
+    if (chatSellerName) chatSellerName.textContent = sellerName;
+    populateChatHeader();
+
+    // syncChatRoomHistory already finds-or-creates the room server-side
+    // (POST /api/chat/room) and reloads its history, so reopening the
+    // widget for the same product/seller always resumes the same
+    // conversation instead of starting a new one.
+    if (chatPopup) chatPopup.classList.add("open");
     if (chatInput) chatInput.focus();
 
     await syncChatRoomHistory(token, targetedSellerId);
@@ -471,7 +542,7 @@ if (chatWithSellerBtn) {
 }
 
 if (closeChatBtn) {
-  closeChatBtn.addEventListener("click", () => { if (chatPopup) chatPopup.style.display = "none"; });
+  closeChatBtn.addEventListener("click", () => { if (chatPopup) chatPopup.classList.remove("open"); });
 }
 
 // ======================================
@@ -484,8 +555,8 @@ function initNotificationListener(userId) {
   notificationChannel
     .on('broadcast', { event: 'new_msg_alert' }, (payload) => {
       if (payload.payload.productId === productId || !payload.payload.productId) {
-        if (chatPopup && chatPopup.style.display === "flex") {
-          appendMessageToUI(payload.payload.msg, "received");
+        if (chatPopup && chatPopup.classList.contains("open")) {
+          appendMessageToUI(payload.payload.msg, "received", new Date());
         }
       } 
       sendToProfileUpdateSection(payload.payload.senderName, payload.payload.msg);
@@ -554,7 +625,7 @@ if (chatForm) {
 
     const sellerId = currentProduct.seller_id || currentProduct.user_id;
 
-    appendMessageToUI(text, "sent");
+    appendMessageToUI(text, "sent", new Date());
     if (chatInput) chatInput.value = "";
 
     try {

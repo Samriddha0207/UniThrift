@@ -99,44 +99,68 @@ async function tryRefreshToken() {
 }
 
 // ======================================
+// AUTHENTICATED FETCH (attaches token, relays refresh, retries once on 401)
+// ======================================
+// This is the single place every authenticated request should go through.
+// Access tokens expire (Supabase default: 1 hour). Without this helper,
+// any request made after that point — including avatar/document uploads —
+// fails with "Session expired" and never recovers on its own.
+async function authFetch(url, options = {}) {
+    const token        = localStorage.getItem("unithrift_session_token");
+    const refreshToken = localStorage.getItem("unithrift_refresh_token");
+
+    function withAuthHeaders(tok) {
+        const headers = new Headers(options.headers || {});
+        headers.set("Authorization", `Bearer ${tok || ""}`);
+        if (refreshToken) headers.set("X-Refresh-Token", refreshToken);
+        return headers;
+    }
+
+    function persistRefreshedTokens(res) {
+        const newAccess  = res.headers.get("X-New-Access-Token");
+        const newRefresh = res.headers.get("X-New-Refresh-Token");
+        if (newAccess)  localStorage.setItem("unithrift_session_token", newAccess);
+        if (newRefresh) localStorage.setItem("unithrift_refresh_token", newRefresh);
+    }
+
+    let res = await fetch(url, { ...options, headers: withAuthHeaders(token) });
+    persistRefreshedTokens(res);
+
+    if (res.status === 401) {
+        const refreshedToken = await tryRefreshToken();
+        if (!refreshedToken) return res; // let the caller handle the failure/logout
+
+        res = await fetch(url, { ...options, headers: withAuthHeaders(refreshedToken) });
+        persistRefreshedTokens(res);
+    }
+
+    return res;
+}
+
+// ======================================
 // INITIALIZE APPLICATION
 // ======================================
 async function initializeProfile() {
     try {
         showLoading();
-        let token = localStorage.getItem("unithrift_session_token");
+        const token = localStorage.getItem("unithrift_session_token");
         if (!token) { logout(); return; }
 
-        let response = await fetch("/api/profile", {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-
-        if (response.status === 401) {
-            token = await tryRefreshToken();
-            if (!token) { logout(); return; }
-            response = await fetch("/api/profile", {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-        }
-
+        let response = await authFetch("/api/profile");
+        if (response.status === 401) { logout(); return; }
         if (!response.ok) throw new Error(`Status ${response.status}`);
 
         let result = await response.json().catch(() => ({ success: false }));
         if (!result.success) { logout(); return; }
 
         if (!result.profile || !result.profile.id) {
-            const saveRes = await fetch("/api/profile/save", {
+            const saveRes = await authFetch("/api/profile/save", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ college_name: "", location_name: "", address: "" })
             });
             if (saveRes.ok) {
-                const retry = await fetch("/api/profile", {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
+                const retry = await authFetch("/api/profile");
                 result = await retry.json().catch(() => result);
             }
         }
@@ -236,15 +260,16 @@ function renderVerificationSummary(profile) {
     const sellerIcon   = sellerVerified   ? "fa-check-circle" : "fa-circle-xmark";
     const studentColor = studentVerified  ? "var(--success)"  : "var(--warning)";
     const sellerColor  = sellerVerified   ? "var(--success)"  : "var(--muted)";
+    const sellerDocsSubmitted = profile.pan_url && profile.payment_qr_url;
     const studentText  = studentVerified  ? "Verified"        : (profile.college_id_url ? "Pending review" : "Not submitted");
-    const sellerText   = sellerVerified   ? "Verified"        : "Not submitted";
+    const sellerText   = sellerVerified   ? "Verified"        : (sellerDocsSubmitted ? "Pending review" : "Not submitted");
 
     if (studentStatus) {
-        studentStatus.textContent = studentVerified ? "Verified" : "Pending";
+        studentStatus.textContent = studentVerified ? "Verified" : (profile.college_id_url ? "Pending" : "Not submitted");
         studentStatus.className   = "badge-status" + (studentVerified ? "" : " badge-pending");
     }
     if (sellerStatus) {
-        sellerStatus.textContent = sellerVerified ? "Verified" : "Not submitted";
+        sellerStatus.textContent = sellerVerified ? "Verified" : (sellerDocsSubmitted ? "Pending" : "Not submitted");
         sellerStatus.className   = "badge-status" + (sellerVerified ? "" : " badge-pending");
     }
 
@@ -316,10 +341,7 @@ if (verificationSummary) {
             deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
             try {
-                const res = await fetch(`/api/profile/verify/${type}`, {
-                    method: "DELETE",
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
+                const res = await authFetch(`/api/profile/verify/${type}`, { method: "DELETE" });
                 const result = await res.json().catch(() => ({ success: false }));
                 if (result.success) {
                     initializeProfile();
@@ -352,12 +374,9 @@ if (profileForm) {
         btn.disabled = true;
 
         try {
-            const res = await fetch("/api/profile/save", {
+            const res = await authFetch("/api/profile/save", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     college_name:  document.getElementById("college")?.value  || "",
                     location_name: document.getElementById("location")?.value || "",
@@ -393,9 +412,8 @@ if (avatarUpload) {
         formData.append("avatar", file);
 
         try {
-            const res    = await fetch("/api/profile/avatar", {
+            const res    = await authFetch("/api/profile/avatar", {
                 method: "POST",
-                headers: { "Authorization": `Bearer ${token}` },
                 body: formData
             });
             const result = await res.json().catch(() => ({ success: false }));
@@ -427,15 +445,15 @@ if (verifyStudentBtn) {
         formData.append("collegeId", file);
 
         try {
-            const res    = await fetch("/api/profile/verify/student", {
+            const res    = await authFetch("/api/profile/verify/student", {
                 method: "POST",
-                headers: { "Authorization": `Bearer ${token}` },
                 body: formData
             });
             const result = await res.json().catch(() => ({ success: false, message: "Verification failed." }));
 
             if (result.success) {
                 verifyStudentBtn.innerHTML = '<i class="fas fa-check"></i> Submitted!';
+                initializeProfile();
             } else {
                 verifyStudentBtn.innerHTML = '<i class="fas fa-times"></i> Verification Failed';
                 alert(result.message || "Verification failed.");
@@ -474,15 +492,15 @@ if (sellerVerifyBtn) {
         formData.append("paymentQr",  qrFile);
 
         try {
-            const res    = await fetch("/api/profile/verify/seller", {
+            const res    = await authFetch("/api/profile/verify/seller", {
                 method: "POST",
-                headers: { "Authorization": `Bearer ${token}` },
                 body: formData
             });
             const result = await res.json().catch(() => ({ success: false }));
             sellerVerifyBtn.innerHTML = result.success
                 ? '<i class="fas fa-check"></i> Submitted!'
                 : '<i class="fas fa-times"></i> Failed';
+            if (result.success) initializeProfile();
         } catch (err) {
             sellerVerifyBtn.innerHTML = '<i class="fas fa-times"></i> Error';
         }
@@ -502,6 +520,21 @@ const cartBtn = document.getElementById("cartBtn");
 if (cartBtn) cartBtn.addEventListener("click", () => { window.location.href = "/marketplace"; });
 
 // ======================================
+// HIDDEN ADMIN ENTRY (Ctrl+F10) — silently does nothing for non-admins
+// ======================================
+document.addEventListener("keydown", async (e) => {
+    if (!e.ctrlKey || e.key !== "F10") return;
+    e.preventDefault();
+    const token = localStorage.getItem("unithrift_session_token");
+    if (!token) return;
+    try {
+        const res    = await authFetch("/api/admin/check");
+        const result = await res.json().catch(() => ({ isAdmin: false }));
+        if (result.isAdmin) window.location.href = "/admin";
+    } catch (err) { /* fail silent */ }
+});
+
+// ======================================
 // LOAD MY LISTINGS
 // ======================================
 async function loadListings() {
@@ -511,9 +544,7 @@ async function loadListings() {
     listingContainer.innerHTML = `<p class="loading-text" style="padding:20px;"><i class="fas fa-spinner fa-spin"></i> Loading your listings...</p>`;
 
     try {
-        const res    = await fetch("/api/profile/my-listings", {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
+        const res    = await authFetch("/api/profile/my-listings");
         const result = await res.json().catch(() => ({ success: false }));
 
         if (!result.success || !result.products?.length) {

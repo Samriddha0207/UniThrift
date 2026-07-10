@@ -8,13 +8,13 @@ const helmet     = require('helmet');
 const cors       = require('cors');
 const rateLimit  = require('express-rate-limit');
 const { createClient } = require('@supabase/supabase-js');
-const { GoogleGenerativeAI } = require("@google/generative-ai"); //[cite: 1]
+const { GoogleGenAI } = require("@google/genai");
 const { generateOTP, hashOTP, verifyOTP, createExpiry, isExpired } = require('./services/otpService');
 const { sendVerificationOTP } = require('./services/emailservice');
 
 const app    = express();
 const PORT   = process.env.PORT || 3000;
-
+const DISABLE_TURNSTILE = true; // Set to false before deployment
 // =========================================================================
 // 1. CONFIG — all secrets from .env
 // =========================================================================
@@ -33,22 +33,38 @@ if (!SUPABASE_URL || !SUPABASE_KEY || !JWT_SECRET) {
     console.error("   SUPABASE_JWT_SECRET:        ", !!JWT_SECRET);
     process.exit(1);
 }
-
 const supabase = createClient(
     SUPABASE_URL,
-    SUPABASE_KEY
+    SUPABASE_KEY,
+    { auth: { autoRefreshToken: false, persistSession: false } }
 );
-// Initialize Gemini[cite: 1]
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY); //[cite: 1]
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); //[cite: 1]
+const supabaseAuth = createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+);
+const GEMINI_MODEL = "gemini-2.5-flash";
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+async function askGemini(parts) {
+    const response = await genAI.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: [{ role: 'user', parts }]
+    });
+    return response.text || '';
+}
 
-// --- AI VERIFICATION HELPER ---
-async function verifyProductWithAI(title, description, imageUrls) { //[cite: 1]
-    try { //[cite: 1]
-        // We will fetch the first image to verify
-        const mainImageResp = await fetch(imageUrls[0]); //[cite: 1]
-        const arrayBuffer = await mainImageResp.arrayBuffer(); //[cite: 1]
-        const base64Data = Buffer.from(arrayBuffer).toString("base64"); //[cite: 1]
+function extractJson(text) {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('No JSON found in Gemini response');
+    return JSON.parse(match[0]);
+}
+async function verifyProductWithAI(title, description, imageUrls) {
+    try {
+        const mainImageResp = await fetch(imageUrls[0]);
+        if (!mainImageResp.ok) throw new Error(`Could not fetch product image (${mainImageResp.status})`);
+        const arrayBuffer = await mainImageResp.arrayBuffer();
+        const base64Data = Buffer.from(arrayBuffer).toString("base64");
+        const mimeType = mainImageResp.headers.get('content-type') || 'image/jpeg';
 
         const prompt = `
             You are an expert product moderator for a university marketplace called UniThrift.
@@ -63,71 +79,20 @@ async function verifyProductWithAI(title, description, imageUrls) { //[cite: 1]
             
             Return ONLY a JSON object in this format:
             {"verified": boolean, "reason": "short explanation", "confidence": 0-1}
-        `; //[cite: 1]
+        `;
 
-        const result = await model.generateContent([ //[cite: 1]
-            prompt, //[cite: 1]
-            { //[cite: 1]
-                inlineData: { //[cite: 1]
-                    data: base64Data, //[cite: 1]
-                    mimeType: "image/jpeg", //[cite: 1]
-                }, //[cite: 1]
-            }, //[cite: 1]
-        ]); //[cite: 1]
-
-        const responseText = result.response.text(); //[cite: 1]
-        // Clean the response (sometimes Gemini adds \`\`\`json ... \`\`\`)
-        const jsonMatch = responseText.match(/\{.*\}/s); //[cite: 1]
-        return JSON.parse(jsonMatch[0]); //[cite: 1]
-    } catch (error) { //[cite: 1]
-        console.error("Gemini AI Error:", error); //[cite: 1]
-        // Default to true if AI fails so we don't block users, 
-        // or false if you want strict security.
-        return { verified: true, reason: "AI bypass" };  //[cite: 1]
-    } //[cite: 1]
-} //[cite: 1]
-
-// ---- GEMINI: COLLEGE ID CHECK ----
-async function verifyCollegeIdWithAI(fileBuffer, mimeType) {
-    try {
-        const base64Data = fileBuffer.toString('base64');
-        const prompt = `You are a document verification system for UniThrift, a university student marketplace in India.
-Examine this uploaded document. Determine if it is a GENUINE College/University ID card issued to a student.
-Check: institution name/logo, student photo, roll/enrollment number, authentic appearance.
-Reject: random photos, blank pages, non-student-ID documents, heavily blurred images.
-Return ONLY JSON, no markdown: {"verified": boolean, "reason": "one sentence", "confidence": 0.0}`;
-        const result = await model.generateContent([prompt, { inlineData: { data: base64Data, mimeType } }]);
-        const text = result.response.text();
-        const match = text.match(/\{[\s\S]*?\}/);
-        if (!match) throw new Error('No JSON from Gemini');
-        return JSON.parse(match[0]);
-    } catch (err) {
-        console.error('Gemini College ID error:', err.message);
-        return { verified: true, reason: 'AI check skipped (service error)', confidence: 0.5 };
+        const responseText = await askGemini([
+            { text: prompt },
+            { inlineData: { data: base64Data, mimeType } }
+        ]);
+        const result = extractJson(responseText);
+        if (typeof result.verified !== 'boolean') throw new Error('Malformed AI response');
+        return result;
+    } catch (error) {
+        console.error("Gemini AI Error:", error.message);
+        return { verified: false, reason: 'AI moderation is temporarily unavailable. Please try submitting again in a moment.' };
     }
 }
-
-// ---- GEMINI: PAN CARD CHECK ----
-async function verifyPanCardWithAI(fileBuffer, mimeType) {
-    try {
-        const base64Data = fileBuffer.toString('base64');
-        const prompt = `You are a KYC verification system for UniThrift, a university marketplace in India.
-Examine this uploaded document. Determine if it is a GENUINE Indian PAN Card issued by the Income Tax Department.
-Check: "Income Tax Department"/"Govt. of India" text, 10-char PAN number (AAAAA9999A format), holder name and DOB, official branding.
-Reject: Aadhaar, driving licence, random photos, blank pages, anything not a PAN card.
-Return ONLY JSON, no markdown: {"verified": boolean, "pan_number": "PAN or null", "reason": "one sentence", "confidence": 0.0}`;
-        const result = await model.generateContent([prompt, { inlineData: { data: base64Data, mimeType } }]);
-        const text = result.response.text();
-        const match = text.match(/\{[\s\S]*?\}/);
-        if (!match) throw new Error('No JSON from Gemini');
-        return JSON.parse(match[0]);
-    } catch (err) {
-        console.error('Gemini PAN error:', err.message);
-        return { verified: true, reason: 'AI check skipped (service error)', confidence: 0.5 };
-    }
-}
-
-// ---- GEMINI: PRODUCT + REVIEW INSIGHTS ----
 async function generateProductInsights(product, reviews) {
     try {
         const reviewsText = (reviews && reviews.length > 0)
@@ -154,11 +119,8 @@ Task:
 Return ONLY JSON, no markdown, in this exact format:
 {"product_summary": "...", "review_summary": "...", "key_points": ["...", "..."], "recommendation": "Positive|Neutral|Caution"}`;
 
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
-        const match = text.match(/\{[\s\S]*\}/);
-        if (!match) throw new Error('No JSON from Gemini');
-        return JSON.parse(match[0]);
+        const text = await askGemini([{ text: prompt }]);
+        return extractJson(text);
     } catch (err) {
         console.error('Gemini product insights error:', err.message);
         return {
@@ -170,16 +132,12 @@ Return ONLY JSON, no markdown, in this exact format:
         };
     }
 }
-
-// ---- INTERNAL: CREATE NOTIFICATION ----
 async function createNotification(userId, message, type = 'info', referenceId = null) {
     const { error } = await supabase.from('notifications').insert({
         user_id: userId, message, type, reference_id: referenceId, read: false
     });
     if (error) console.error('createNotification error:', error.message);
 }
-
-// ---- INTERNAL: VERIFY CLOUDFLARE TURNSTILE TOKEN ----
 async function verifyTurnstile(token, remoteIp) {
     if (!TURNSTILE_SECRET_KEY) {
         console.error('TURNSTILE_SECRET_KEY is not configured.');
@@ -205,10 +163,6 @@ async function verifyTurnstile(token, remoteIp) {
         return false;
     }
 }
-
-// =========================================================================
-// 2. MULTER — file size limit + MIME type whitelist
-// =========================================================================
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const ALLOWED_DOC_TYPES   = [...ALLOWED_IMAGE_TYPES, 'application/pdf'];
 
@@ -239,64 +193,57 @@ const uploadDoc = multer({
     limits:  { fileSize: 15 * 1024 * 1024 },  // 15 MB for ID/PAN docs
     fileFilter: docOrImageFilter
 });
-
-// =========================================================================
 // 3. AUTH HELPER — auto-refreshes expired tokens via X-Refresh-Token header
-// =========================================================================
+class AuthError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'AuthError';
+        this.status = 401;
+    }
+}
+
 async function getUserFromToken(req) {
     const authHeader = req.headers['authorization'] || '';
     const parts = authHeader.split(' ');
     if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer')
-        throw new Error('No token provided');
+        throw new AuthError('No token provided');
     const token = parts[1].trim();
-    if (!token) throw new Error('No token provided');
+    if (!token) throw new AuthError('No token provided');
 
-    // 1. Try token as-is
-    const { data, error } = await supabase.auth.getUser(token);
+    const { data, error } = await supabaseAuth.auth.getUser(token);
     if (data?.user && !error)
         return { id: data.user.id, email: data.user.email };
-
-    // 2. Expired — try silent refresh
     const refreshToken = (req.headers['x-refresh-token'] || '').trim();
     if (!refreshToken) {
         console.error('Supabase getUser failed:', error?.message);
-        throw new Error('Session expired. Please log in again.');
+        throw new AuthError('Session expired. Please log in again.');
     }
 
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
+    const { data: refreshData, error: refreshError } = await supabaseAuth.auth.refreshSession({
         refresh_token: refreshToken
     });
 
     if (refreshError || !refreshData?.user) {
         console.error('Token refresh failed:', refreshError?.message);
-        throw new Error('Session expired. Please log in again.');
+        throw new AuthError('Session expired. Please log in again.');
     }
-
-    // Attach new tokens so withTokenRefresh can send them back
     req._newAccessToken  = refreshData.session.access_token;
     req._newRefreshToken = refreshData.session.refresh_token;
 
     return { id: refreshData.user.id, email: refreshData.user.email };
 }
-
-// Sends refreshed tokens as response headers so the client can persist them
-function withTokenRefresh(handler) {
-    return async (req, res, next) => {
-        const originalJson = res.json.bind(res);
-        res.json = (body) => {
-            if (req._newAccessToken) {
-                res.setHeader('X-New-Access-Token',  req._newAccessToken);
-                res.setHeader('X-New-Refresh-Token', req._newRefreshToken);
-            }
-            return originalJson(body);
-        };
-        return handler(req, res, next);
-    };
+async function requireAdmin(req) {
+    const user = await getUserFromToken(req);
+    const { data: profile, error } = await supabase
+        .from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
+    if (error) throw error;
+    if (!profile?.is_admin) {
+        const e = new Error('Admin access required');
+        e.status = 403;
+        throw e;
+    }
+    return user;
 }
-
-// =========================================================================
-// 4. INPUT SANITIZATION HELPERS
-// =========================================================================
 function sanitizeString(str, maxLength = 500) {
     if (typeof str !== 'string') return '';
     return str.trim().slice(0, maxLength);
@@ -306,10 +253,7 @@ function sanitizeNumber(val) {
     const n = Number(val);
     return isNaN(n) || n < 0 ? null : n;
 }
-
-// =========================================================================
 // 5. SECURITY MIDDLEWARE
-// =========================================================================
 app.use(helmet({
     contentSecurityPolicy: false
 }));
@@ -317,7 +261,8 @@ app.use(helmet({
 app.use(cors({
     origin: APP_URL,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Refresh-Token']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Refresh-Token'],
+    exposedHeaders: ['X-New-Access-Token', 'X-New-Refresh-Token']
 }));
 
 const loginLimiter = rateLimit({
@@ -367,14 +312,22 @@ const generalLimiter = rateLimit({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use('/api/', generalLimiter);
+app.use((req, res, next) => {
+    const originalJson = res.json.bind(res);
+    res.json = (body) => {
+        if (req._newAccessToken) {
+            res.setHeader('X-New-Access-Token',  req._newAccessToken);
+            res.setHeader('X-New-Refresh-Token', req._newRefreshToken);
+        }
+        return originalJson(body);
+    };
+    next();
+});
 
 app.use('/css',    express.static(path.join(__dirname, 'css')));
 app.use('/js',     express.static(path.join(__dirname, 'js')));
 app.use('/images', express.static(path.join(__dirname, 'images')));
-
-// =========================================================================
 // 6. FRONTEND ROUTES
-// =========================================================================
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.get('/',            (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
 app.get('/login.html',  (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
@@ -383,6 +336,7 @@ app.get('/marketplace', (req, res) => res.sendFile(path.join(__dirname, 'marketp
 app.get('/product',     (req, res) => sendWithSupabaseConfig(res, 'product.html'));
 app.get('/product.html',(req, res) => sendWithSupabaseConfig(res, 'product.html'));
 app.get('/profile',     (req, res) => res.sendFile(path.join(__dirname, 'profile.html')));
+app.get('/admin',       (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/checkout', (req, res) => {res.sendFile(path.join(__dirname, 'checkout.html'));});
 app.get('/sell',        (req, res) => res.sendFile(path.join(__dirname, 'sell.html')));
 app.get('/about',       (req, res) => res.sendFile(path.join(__dirname, 'about.html')));
@@ -407,14 +361,14 @@ app.get('/updates', (req, res) => sendWithSupabaseConfig(res, 'updates.html'));
 // 7. API ROUTES--
 app.post('/api/auth/google', async (req, res) => {
     try {
-        const { data, error } = await supabase.auth.signInWithOAuth({
+        const { data, error } = await supabaseAuth.auth.signInWithOAuth({
             provider: 'google',
             options: { redirectTo: `${APP_URL}/marketplace` }
         });
         if (error) throw error;
         return res.json({ success: true, url: data.url });
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
 
@@ -423,7 +377,7 @@ app.post('/api/auth/refresh', async (req, res) => {
     const { refresh_token } = req.body;
     if (!refresh_token) return res.status(400).json({ success: false, message: 'No refresh token' });
     try {
-        const { data, error } = await supabase.auth.refreshSession({ refresh_token });
+        const { data, error } = await supabaseAuth.auth.refreshSession({ refresh_token });
         if (error || !data.session) throw new Error(error?.message || 'Refresh failed');
         return res.json({
             success:       true,
@@ -459,7 +413,7 @@ app.post('/api/signup', signupLimiter, async (req, res) => {
         return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
 
     try {
-        const { data: signUpData, error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabaseAuth.auth.signUp({
             email,
             password,
             options: { data: { username } }
@@ -573,14 +527,10 @@ async function handleVerifyEmail(req, res) {
             await supabase.from('email_verifications').update({ attempts: record.attempts + 1 }).eq('id', record.id);
             return res.status(400).json({ success: false, message: 'Incorrect code. Please try again.' });
         }
-
-        // Correct code — mark the Supabase auth user as email-confirmed
         const { error: confirmError } = await supabase.auth.admin.updateUserById(record.user_id, {
             email_confirm: true
         });
         if (confirmError) throw confirmError;
-
-        // Verification complete — delete the OTP record so it can never be reused
         await supabase.from('email_verifications').delete().eq('id', record.id);
 
         return res.json({ success: true, message: 'Email verified! You can now log in.' });
@@ -645,11 +595,9 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                 return res.status(400).json({ success: false, message: 'No account found matching that username.' });
             targetEmail = emailResult;
         }
-        const { data, error } = await supabase.auth.signInWithPassword({ email: targetEmail, password });
+        const { data, error } = await supabaseAuth.auth.signInWithPassword({ email: targetEmail, password });
 
         if (error) {
-            // Supabase itself refuses sign-in for unconfirmed addresses when
-            // "Confirm email" is enabled — surface that as a verification prompt.
             if (/confirm/i.test(error.message || '')) {
                 return res.status(403).json({
                     success: false,
@@ -660,8 +608,6 @@ app.post('/api/login', loginLimiter, async (req, res) => {
             }
             throw error;
         }
-
-        // Belt-and-suspenders check in case the project doesn't enforce it itself.
         if (!data.user?.email_confirmed_at) {
             if (data.session?.access_token) {
                 await supabase.auth.admin.signOut(data.session.access_token).catch(() => {});
@@ -715,7 +661,7 @@ app.post('/api/profile/save', async (req, res) => {
         if (error) throw error;
         return res.json({ success: true });
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
 
@@ -742,7 +688,7 @@ app.post('/api/profile/avatar', uploadLimiter, uploadImage.single('avatar'), asy
         return res.json({ success: true, url: publicUrl });
     } catch (error) {
         console.error('Avatar upload error:', error.message);
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
 
@@ -752,19 +698,6 @@ app.post('/api/profile/verify/student', uploadLimiter, uploadDoc.single('college
         const user = await getUserFromToken(req);
         if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
 
-        // Gemini AI check
-        console.log(`Gemini College ID check for ${user.id}...`);
-        const aiResult = await verifyCollegeIdWithAI(req.file.buffer, req.file.mimetype);
-        console.log('   Result:', aiResult);
-
-     if (!aiResult.verified) {
-    return res.status(400).json({
-        success: false,
-        message: aiResult.reason,
-        confidence: aiResult.confidence,
-        ai_verified: false
-    });
-}
         const ext      = req.file.originalname.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
         const fileName = `${user.id}_college_id_${Date.now()}.${ext}`;
 
@@ -774,21 +707,27 @@ app.post('/api/profile/verify/student', uploadLimiter, uploadDoc.single('college
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage.from('verification').getPublicUrl(fileName);
-        const { error: updateError } = await supabase.from('profiles').upsert({
-            id: user.id, college_id_url: publicUrl,
-            student_verified: false,
-            ai_id_confidence: aiResult.confidence ?? null,
-            updated_at: new Date()
-        });
-        if (updateError) throw updateError;
+        const { data, error } = await supabase
+  .from("profiles")
+  .upsert({
+    id: user.id,
+    college_id_url: publicUrl,
+    student_verified: false,
+    updated_at: new Date()
+  })
+  .select();
+
+console.log("UPSERT DATA:", data);
+console.log("UPSERT ERROR:", error);
+        if (error) throw error;
 
         await createNotification(user.id,
             "Your College ID has been submitted for review. We'll notify you once verified.", 'system');
 
-        return res.json({ success: true, ai_checked: true, message: 'College ID submitted. Verification under review.', url: publicUrl });
+        return res.json({ success: true, message: 'College ID submitted. Verification under review.', url: publicUrl });
     } catch (error) {
         console.error('Student verification error:', error.message);
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
 
@@ -804,18 +743,6 @@ app.post('/api/profile/verify/seller', uploadLimiter, uploadDoc.fields([
 
         const panFile = req.files.panCard[0];
         const qrFile  = req.files.paymentQr[0];
-
-        // Gemini AI check on PAN card
-        console.log(`Gemini PAN card check for ${user.id}...`);
-        const aiResult = await verifyPanCardWithAI(panFile.buffer, panFile.mimetype);
-        console.log('   Result:', aiResult);
-
-        if (!aiResult.verified) {
-            return res.status(400).json({
-                success: false, ai_checked: true,
-                message: `PAN card rejected: ${aiResult.reason}. Please upload a clear photo of your PAN card.`
-            });
-        }
 
         const panExt      = panFile.originalname.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
         const panFileName = `${user.id}_pan_${Date.now()}.${panExt}`;
@@ -836,9 +763,7 @@ app.post('/api/profile/verify/seller', uploadLimiter, uploadDoc.fields([
 
         const { error: updateError } = await supabase.from('profiles').upsert({
             id: user.id, pan_url: panUrl, payment_qr_url: qrUrl,
-            pan_number_ai: aiResult.pan_number ?? null,
             seller_verified: false,
-            ai_pan_confidence: aiResult.confidence ?? null,
             updated_at: new Date()
         });
         if (updateError) throw updateError;
@@ -846,10 +771,10 @@ app.post('/api/profile/verify/seller', uploadLimiter, uploadDoc.fields([
         await createNotification(user.id,
             "Your seller verification documents have been submitted. We'll notify you once approved.", 'system');
 
-        return res.json({ success: true, ai_checked: true, message: 'Documents submitted. Seller verification under review.', pan_url: panUrl, qr_url: qrUrl });
+        return res.json({ success: true, message: 'Documents submitted. Seller verification under review.', pan_url: panUrl, qr_url: qrUrl });
     } catch (error) {
         console.error('Seller verification error:', error.message);
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
 
@@ -860,8 +785,8 @@ app.delete('/api/profile/verify/:type', async (req, res) => {
         const type = req.params.type; // 'student' | 'pan' | 'qr'
 
         const fieldMap = {
-            student: { urlField: 'college_id_url', extra: { student_verified: false, ai_id_confidence: null } },
-            pan:     { urlField: 'pan_url',         extra: { seller_verified: false, pan_number_ai: null, ai_pan_confidence: null } },
+            student: { urlField: 'college_id_url', extra: { student_verified: false } },
+            pan:     { urlField: 'pan_url',         extra: { seller_verified: false } },
             qr:      { urlField: 'payment_qr_url',  extra: { seller_verified: false } }
         };
         const config = fieldMap[type];
@@ -886,7 +811,65 @@ app.delete('/api/profile/verify/:type', async (req, res) => {
         return res.json({ success: true, message: 'Document removed.' });
     } catch (error) {
         console.error('Delete verification doc error:', error.message);
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(error.status || 500).json({ success: false, message: error.message });
+    }
+});
+// ADMIN — MANUAL VERIFICATION REVIEW
+-
+app.get('/api/admin/check', async (req, res) => {
+    try {
+        await requireAdmin(req);
+        return res.json({ success: true, isAdmin: true });
+    } catch (error) {
+        return res.json({ success: true, isAdmin: false });
+    }
+});
+app.get('/api/admin/verifications', async (req, res) => {
+    try {
+        await requireAdmin(req);
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, username, college_id_url, student_verified, pan_url, payment_qr_url, seller_verified, updated_at')
+            .or('and(college_id_url.not.is.null,student_verified.eq.false),and(pan_url.not.is.null,payment_qr_url.not.is.null,seller_verified.eq.false)');
+        if (error) throw error;
+        return res.json({ success: true, pending: data || [] });
+    } catch (error) {
+        return res.status(error.status || 500).json({ success: false, message: error.message });
+    }
+});
+app.post('/api/admin/verifications/:userId/:type/:action', async (req, res) => {
+    try {
+        const admin = await requireAdmin(req);
+        const { userId, type, action } = req.params;
+        if (!['student', 'seller'].includes(type) || !['approve', 'reject'].includes(action))
+            return res.status(400).json({ success: false, message: 'Invalid type or action' });
+
+        const verifiedField = type === 'student' ? 'student_verified' : 'seller_verified';
+        const approve = action === 'approve';
+
+        const update = {
+            [verifiedField]: approve,
+            updated_at: new Date(),
+            [`${type}_reviewed_at`]: new Date(),
+            [`${type}_reviewed_by`]: admin.id
+        };
+        if (!approve) {
+            if (type === 'student') update.college_id_url = null;
+            else { update.pan_url = null; update.payment_qr_url = null; }
+        }
+
+        const { error } = await supabase.from('profiles').update(update).eq('id', userId);
+        if (error) throw error;
+
+        await createNotification(userId,
+            approve
+                ? `Your ${type === 'student' ? 'student' : 'seller'} verification was approved!`
+                : `Your ${type === 'student' ? 'student' : 'seller'} verification was rejected. Please re-upload a clearer document.`,
+            'system');
+
+        return res.json({ success: true });
+    } catch (error) {
+        return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
 
@@ -914,7 +897,7 @@ app.get('/api/profile/my-listings', async (req, res) => {
             }))
         });
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
 
@@ -927,7 +910,7 @@ app.get('/api/user/:id', async (req, res) => {
         if (!profile) return res.status(404).json({ success: false, message: 'Seller not found' });
         return res.json({ success: true, seller: profile });
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
 
@@ -953,7 +936,7 @@ app.get('/api/products', async (req, res) => {
             }))
         });
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
 
@@ -977,7 +960,7 @@ app.get('/api/products/:id/images', async (req, res) => {
         if (error) throw error;
         return res.json({ success: true, images: images || [] });
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
 
@@ -989,7 +972,7 @@ app.get('/api/products/:id/reviews', async (req, res) => {
         if (error) throw error;
         return res.json({ success: true, reviews: reviews || [] });
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
 
@@ -1013,7 +996,7 @@ app.post('/api/products/:id/reviews', async (req, res) => {
         if (error) throw error;
         return res.json({ success: true, review: insertedData?.[0] || null });
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
 
@@ -1115,7 +1098,7 @@ app.post('/api/listings/create', async (req, res) => { //[cite: 1]
 
         return res.json({ success: true, product }); //[cite: 1]
     } catch (error) { //[cite: 1]
-        return res.status(500).json({ success: false, message: error.message }); //[cite: 1]
+        return res.status(error.status || 500).json({ success: false, message: error.message }); //[cite: 1]
     } //[cite: 1]
 }); //[cite: 1]
 
@@ -1142,7 +1125,7 @@ app.post('/api/listings/upload-image', uploadLimiter, async (req, res) => {
         const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
         return res.json({ success: true, url: publicUrl });
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(error.status || 500).json({ success: false, message: error.message });
     }
 });
 
@@ -1273,7 +1256,7 @@ app.post('/api/chat/room', async (req, res) => {
 
         return res.json({ success: true, room_id: room.id });
     } catch (err) {
-        return res.status(500).json({ success: false, message: err.message });
+        return res.status(err.status || 500).json({ success: false, message: err.message });
     }
 });
 
@@ -1294,7 +1277,7 @@ app.get('/api/chat/rooms', async (req, res) => {
         }));
         return res.json({ success: true, rooms: enriched });
     } catch (err) {
-        return res.status(500).json({ success: false, message: err.message });
+        return res.status(err.status || 500).json({ success: false, message: err.message });
     }
 });
 
@@ -1313,7 +1296,7 @@ app.get('/api/chat/rooms/:room_id/messages', async (req, res) => {
         if (error) throw error;
         return res.json({ success: true, messages: messages || [] });
     } catch (err) {
-        return res.status(500).json({ success: false, message: err.message });
+        return res.status(err.status || 500).json({ success: false, message: err.message });
     }
 });
 
@@ -1337,7 +1320,7 @@ app.post('/api/chat/rooms/:room_id/messages', async (req, res) => {
         if (error) throw error;
         return res.json({ success: true, message: msg });
     } catch (err) {
-        return res.status(500).json({ success: false, message: err.message });
+        return res.status(err.status || 500).json({ success: false, message: err.message });
     }
 });
 
@@ -1346,4 +1329,3 @@ app.post('/api/chat/rooms/:room_id/messages', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 UniThrift running at http://localhost:${PORT}`);
 });
-
