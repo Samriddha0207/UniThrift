@@ -14,7 +14,6 @@ const { sendVerificationOTP } = require('./services/emailservice');
 
 const app    = express();
 const PORT   = process.env.PORT || 3000;
-const DISABLE_TURNSTILE = true; 
 
 // =========================================================================
 // CONFIG — secrets from .env
