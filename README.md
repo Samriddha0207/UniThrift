@@ -4,219 +4,364 @@
 
 ### Buy Smart. Sell Smarter. Sustain Together.
 
-**India's AI-Powered Student Marketplace**
+### India's AI-Powered Student Marketplace
 
-*A secure, campus-exclusive platform where verified students buy and sell pre-owned items, backed by AI-generated product insights.*
+[![Made with MERN](https://img.shields.io/badge/MERN-Full%20Stack-green?style=for-the-badge)]()
+[![Supabase](https://img.shields.io/badge/Auth-Supabase-3ECF8E?style=for-the-badge)]()
+[![Gemini AI](https://img.shields.io/badge/AI-Gemini-blue?style=for-the-badge)]()
 
-[![Node.js](https://img.shields.io/badge/Backend-Node.js%20%7C%20Express-339933?style=for-the-badge&logo=node.js&logoColor=white)]()
-[![MongoDB](https://img.shields.io/badge/Database-MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)]()
-[![Supabase](https://img.shields.io/badge/Auth-Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)]()
-[![Gemini AI](https://img.shields.io/badge/AI-Google%20Gemini-4285F4?style=for-the-badge&logo=googlegemini&logoColor=white)]()
-[![License](https://img.shields.io/badge/License-All%20Rights%20Reserved-red?style=for-the-badge)]()
+## What is UniThrift
+
+UniThrift is an AI-powered marketplace built exclusively for college students, enabling secure buying and selling of pre-owned items within trusted campus communities.
 
 </div>
 
 ---
 
-## Demo
+# Overview
 
-| | |
-|---|---|
-| **Live Demo** | [Link](#) |
-| **Demo Video** | [Link](#) |
-| **Presentation** | [Link](#) |
-| **Repository** | [github.com/Samriddha0207/UniThrift](https://github.com/Samriddha0207/UniThrift) |
+Buying second-hand products is often difficult for students due to scams, fake listings, and the absence of a trusted student-only platform.
 
-## Project Highlights
+UniThrift solves this problem by creating a secure ecosystem where verified college students can buy and sell products confidently.
 
-- Student-only marketplace with college ID verification and verified seller profiles
-- AI-generated product insights (Google Gemini) covering condition, damage, price fairness, and overall assessment
-- Secure Supabase authentication with email/password and Google Sign-In
-- Hybrid AI + human verification through a dedicated Admin Verification Panel
-- Integrated buyer-seller chat linked directly to product listings
-- Smart search, filters, and cart for a complete shopping flow
-- Responsive, dark-themed interface built for desktop and mobile
+Unlike conventional marketplaces, UniThrift integrates **Google Gemini AI** to generate intelligent product insights, helping buyers make informed purchasing decisions while promoting sustainability and affordability.
 
-## Table of Contents
+Our platform combines:
 
-- [Overview](#overview)
-  - [The Problem](#the-problem)
-  - [Our Solution](#our-solution)
-  - [How UniThrift Compares](#how-unithrift-compares)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [System Architecture](#system-architecture)
-- [Security](#security)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Business Model](#business-model)
-- [Impact](#impact)
-- [Roadmap](#roadmap)
-- [Team](#team)
-- [Acknowledgements](#acknowledgements)
-- [License](#license)
-- [Support the Project](#support-the-project)
+* Student-only access
+* AI-powered product analysis
+* Verified seller profiles
+* Secure authentication
+* Buyer-Seller communication
+* Sustainable circular economy
+
+Whether it's textbooks, electronics, lab equipment, hostel essentials, furniture, bicycles or gadgets, UniThrift gives unused products a second life.
 
 ---
 
-## Overview
+# The Issue
 
-Buying second-hand products is often difficult for students due to scams, fake listings, and the absence of a trusted, student-only platform. UniThrift addresses this by creating a secure ecosystem where verified college students can buy and sell products with confidence, giving unused items — textbooks, electronics, lab equipment, hostel essentials, furniture, bicycles, and gadgets — a second life.
+Every academic year, thousands of students purchase expensive products that are only needed temporarily.
 
-### The Problem
+Meanwhile, seniors often discard or struggle to sell perfectly usable items.
 
-Every academic year, students purchase products they only need temporarily, while seniors often struggle to resell or simply discard items still in good condition. Existing marketplaces make this worse:
+Current marketplaces present several challenges:
 
-- Anonymous sellers and unverified listings
-- No student or identity verification
-- Little trust between buyers and sellers
-- No AI-assisted quality assessment
-- High prices for essential items
+❌ Anonymous sellers
 
-The result: students overspend, usable products go to waste, and trust in online resale declines.
+❌ Fake product listings
 
-### Our Solution
+❌ No student verification
 
-UniThrift is a student-exclusive marketplace where trust is built through verification and AI:
+❌ Little trust between buyers and sellers
 
-- Verified student identities and a verified seller program
-- Secure authentication via Supabase
-- AI-generated product insights via Google Gemini
-- Smart search and category filters
-- Integrated buyer-seller communication
-- A modern, responsive interface
+❌ No AI-assisted quality assessment
 
-### How UniThrift Compares
+❌ High prices for essential items
 
-| Capability | Traditional Marketplace | UniThrift |
-|---|:---:|:---:|
-| Seller identity | Anonymous | ✅ Verified students |
-| College verification | None | ✅ College ID verification |
-| AI product assistance | None | ✅ Gemini AI insights |
-| Seller trust | Limited | ✅ Verified seller badge |
-| Platform scope | Generic, public | ✅ Student-only |
-| Sustainability focus | None | ✅ Circular campus economy |
-| Smart search | ✅ | ✅ |
-| Modern UI | ⚠ Varies | ✅ |
+As a result,
+
+* Students spend more money.
+* Useful products become waste.
+* Trust in online resale platforms decreases.
 
 ---
 
-## Features
+# What we do to solve this issue
 
-UniThrift is organized around six pillars: authentication, discovery, AI-assisted trust, verification, communication, and checkout.
+UniThrift creates a secure, student-exclusive marketplace where trust is built through verification and artificial intelligence.
 
-### Authentication & Registration
+### Our platform provides:
 
-Sign-up and login are handled through **Supabase Authentication**, ensuring only registered users can access the platform.
+✅ Verified student identities
 
-- Email & password login, with Google Sign-In
-- Registration via username, email, and password
-- Secure session management and protected routes
-- Password visibility toggle
-- Foundation in place for future student ID verification at sign-up
+✅ Verified seller program
+
+✅ Secure authentication using Supabase
+
+✅ AI-generated product insights using Google Gemini
+
+✅ Smart search and category filters
+
+✅ Integrated buyer-seller communication
+
+✅ Modern responsive interface
+
+Instead of relying solely on seller descriptions, UniThrift leverages AI to analyze product listings and provide unbiased insights that help buyers evaluate products more effectively.
+
+---
+
+# How UniThrift is different from other websites
+
+Unlike traditional marketplaces, UniThrift is specifically designed for campus communities.
+
+| Traditional Marketplace | UniThrift                 |
+| ----------------------- | ------------------------- |
+| Anonymous Sellers       | ✅ Verified Students       |
+| No AI Assistance        | ✅ Gemini AI Insights      |
+| No College Verification | ✅ College ID Verification |
+| Generic Marketplace     | ✅ Student-only Platform   |
+| Limited Trust           | ✅ Verified Sellers        |
+| No Sustainability Focus | ✅ Circular Campus Economy |
+
+# KEY FEATURES
+
+UniThrift is designed to provide a secure, seamless, and intelligent marketplace experience for college students.
+
+---
+
+## Secure Authentication
+
+UniThrift uses **Supabase Authentication** to ensure that only registered users can access the platform.
+
+### Features
+
+* Email & Password Login
+* Student Registration
+* Google Sign-In
+* Secure Session Management
+* Protected Routes
+* Password Visibility Toggle
+* Modern Responsive UI
 
 <p align="center">
   <img src="screenshots/login.png" width="900" alt="Login Page">
 </p>
+
+---
+
+## Student Registration
+
+Every user creates an account before entering the marketplace.
+
+The registration process includes:
+
+* Username
+* Email
+* Password
+* Google Sign Up
+* Secure Authentication
+* Future-ready Student Verification
+
 <p align="center">
   <img src="screenshots/signup.png" width="900" alt="Signup Page">
 </p>
 
-### Marketplace & Product Pages
+---
 
-Once authenticated, students can browse a marketplace built specifically for campus needs, spanning books, electronics, hostel essentials, furniture, cycles, lab equipment, uniforms, and accessories.
+## Smart Marketplace
 
-- Smart search with category, condition, and price filters
-- Responsive product cards with a dark-themed layout
-- Add to cart directly from listings
-- Detailed product pages with images, description, price, delivery date, warranty, payment details, seller information, verification status, buyer chat, and AI-generated insights
+UniThrift provides a modern marketplace built specifically for students.
+
+### Marketplace Features
+
+* Smart Search
+* Category Filters
+* Condition Filters
+* Price Filters
+* Add to Cart
+* Product Cards
+* Beautiful Dark Theme
+* Responsive Layout
+
+Students can browse products ranging from
+
+* Books
+* Electronics
+* Hostel Essentials
+* Furniture
+* Cycles
+* Lab Equipment
+* Uniforms
+* Accessories
 
 <p align="center">
   <img src="screenshots/marketplace.png" width="900" alt="Marketplace">
 </p>
+
+---
+
+## Detailed Product Page
+
+Every product contains detailed information so buyers can make informed decisions.
+
+### Product Information
+
+* Product Images
+* Product Description
+* Price
+* Delivery Date
+* Warranty Information
+* Payment Details
+* Seller Details
+* Student Verification Status
+* Buyer Chat
+* Reviews
+* AI Product Insights
+
 <p align="center">
   <img src="screenshots/product.png" width="900" alt="Product Page">
 </p>
 
-### AI Product Insights (Powered by Gemini)
+---
 
-Every listing is analyzed by **Google Gemini** to increase transparency and buyer confidence, generating an independent assessment rather than relying solely on the seller's own description.
+## AI Product Insights (Powered by Gemini)
 
-```
-Seller Uploads Product
-         │
-         ▼
-Product Images + Description
-         │
-         ▼
-   Google Gemini AI
-         │
-         ├──────────────► Product Summary
-         ├──────────────► Condition Analysis
-         ├──────────────► Damage Detection
-         ├──────────────► Key Buying Points
-         ├──────────────► Price Insights
-         └──────────────► Overall Assessment
-                      │
-                      ▼
-       AI Insights Displayed to Buyers
-```
+UniThrift integrates **Google Gemini AI** to increase transparency and trust in second-hand transactions.
 
-Gemini analyzes uploaded product images, the written description, visible damage, price reasonableness, and overall condition to produce an easy-to-understand assessment for buyers.
+Instead of relying only on the seller's description, Gemini analyzes the listing and generates objective insights for buyers.
+
+### What the AI analyzes
+
+* Product Images
+* Product Description
+* Price Reasonableness
+* Product Condition
+* Visible Damages
+* Key Buying Points
+* Overall Product Assessment
+
+### AI Features
+
+* Summarizes the product
+* Detects inconsistencies
+* Highlights important buying points
+* Provides condition analysis
+* Offers price-related observations
+* Generates an easy-to-understand assessment
+
+This enables buyers to make smarter purchasing decisions while improving trust across the marketplace.
 
 <p align="center">
   <img src="screenshots/ai-verification.png" width="900" alt="AI Product Insights">
 </p>
 
-### Profile, Verification & Admin Review
+---
 
-Every user has a personal dashboard for managing their identity, listings, and verification status — including college information, address, account status, and quick trading tips.
+## Student Profile & Verification
 
-Through the **Verification Hub**, students upload a college ID card, PAN card, and payment QR code to become trusted, verified sellers. Because identity documents require oversight beyond automation, an **Admin Verification Panel** handles manual review when discrepancies are detected. Administrators can:
+Every user receives a personalized dashboard to manage their identity, listings, and verification status.
 
-- Review College ID, PAN card, and payment QR submissions
-- Approve or reject verification requests with remarks
-- Request re-upload of unclear or invalid documents
-- Flag suspicious documents and block fraudulent accounts from gaining seller privileges
+### Profile Features
 
-This hybrid **AI + human verification** model minimizes fraud while ensuring genuine users aren't rejected due to image quality issues alone.
+* Student Dashboard
+* College Information
+* Address Management
+* Profile Details
+* Student Verification
+* Seller Verification
+* My Listings
+* Account Status
+* Quick Trading Tips
+
+### Verification Hub
+
+Students can upload:
+
+* College ID Card
+* PAN Card
+* Payment QR Code
+
+Once verified, users become trusted sellers within the UniThrift ecosystem.
+
+---
+
+## 🛡️ Admin Verification Panel
+
+To ensure the highest level of trust and security, UniThrift includes a dedicated **Admin Verification Panel** for website administrators.
+
+While most profile and document verification is streamlined, certain submissions may require human review if discrepancies or inconsistencies are detected.
+
+### Features
+
+* Manual verification of College ID cards
+* Review of PAN card submissions
+* Verification of payment QR codes
+* Detection and handling of suspicious or incomplete documents
+* Approve or reject verification requests
+* Add remarks or reasons for rejection
+* Request users to re-upload invalid or unclear documents
+* Prevent fraudulent accounts from accessing seller privileges
+
+### Why This Matters
+
+Although AI helps automate product analysis and verification, sensitive identity documents require an additional layer of human oversight. The Admin Verification Panel ensures that every verified seller is authentic, maintaining a secure and trustworthy marketplace for all students.
+
+This hybrid **AI + Human Verification** approach minimizes fraud while ensuring genuine users are never unfairly rejected due to image quality or document inconsistencies.
 
 <p align="center">
   <img src="screenshots/profile.png" width="900" alt="Profile Dashboard">
 </p>
 
-### Buyer-Seller Communication
+---
 
-An integrated messaging system lets buyers and sellers communicate directly from the product page, with product-linked conversations and a verified-user indicator for added trust.
+## 💬Buyer–Seller Communication
 
-### Shopping Cart
+UniThrift includes an integrated messaging system that allows buyers and sellers to communicate directly from the product page.
 
-A straightforward checkout flow: add or remove items, view shipping cost estimation and an order summary with total calculation, then proceed to checkout.
+### Chat Features
+
+* Secure conversations
+* Verified user indicator
+* Product-linked chat
+* Faster negotiations
+* Improved trust between buyers and sellers
+
+---
+
+## Smart Shopping Cart
+
+The shopping cart provides a simple checkout experience.
+
+### Cart Features
+
+* Add Items
+* Remove Items
+* Shipping Cost Estimation
+* Order Summary
+* Total Amount Calculation
+* Proceed to Checkout
 
 <p align="center">
   <img src="screenshots/cart.png" width="350" alt="Shopping Cart">
 </p>
 
-### User Experience & Design
+---
 
-The interface uses a dark, purple glassmorphism theme with smooth animations and clean navigation, fully responsive across desktop and mobile.
+## Modern User Experience
+
+UniThrift is designed with a modern UI that prioritizes usability and accessibility.
+
+### Design Highlights
+
+* Dark Theme
+* Fully Responsive
+* Purple Glassmorphism Design
+* Smooth Animations
+* Clean Navigation
+* Desktop & Mobile Friendly
+* Intuitive User Interface
+
+Our goal is to make buying and selling feel as smooth as using a modern e-commerce platform while keeping the experience tailored for college students.
+
+# Tech Stack Used
+
+UniThrift is built using a modern full-stack architecture that ensures scalability, security, and an intuitive user experience.
+
+| Category                | Technology                       |
+| ----------------------- | -------------------------------- |
+| Frontend                | HTML5, CSS3, JavaScript          |
+| Backend                 | Node.js, Express.js              |
+| Database                | MongoDB                          |
+| Authentication          | Supabase                         |
+| Artificial Intelligence | Google Gemini API                |
+| UI Design               | Glassmorphism, Responsive Design |
+| Version Control         | Git & GitHub                     |
+| Deployment              | Vercel / Render *(Planned)*      |
 
 ---
 
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | HTML5, CSS3, JavaScript |
-| Backend | Node.js, Express.js |
-| Database | MongoDB |
-| Authentication | Supabase |
-| Artificial Intelligence | Google Gemini API |
-| UI Design | Glassmorphism, responsive design |
-| Version Control | Git & GitHub |
-| Deployment | Vercel / Render *(planned)* |
-
-## System Architecture
+# System Architecture
 
 ```
                         UniThrift
@@ -228,10 +373,10 @@ The interface uses a dark, purple glassmorphism theme with smooth animations and
                     Node.js + Express.js
                              │
             ┌────────────────┴────────────────┐
-            ▼                                  ▼
-      MongoDB Database                Supabase Authentication
-            │                                  │
-            └────────────────┬─────────────────┘
+            ▼                                 ▼
+      MongoDB Database               Supabase Authentication
+            │                                 │
+            └────────────────┬────────────────┘
                              ▼
                     Google Gemini API
                              │
@@ -239,17 +384,86 @@ The interface uses a dark, purple glassmorphism theme with smooth animations and
              AI Product Insights & Verification
 ```
 
-## Security
+---
 
-Security is addressed across three layers:
+# AI Workflow
 
-- **Authentication:** secure login, protected routes, session management, and Supabase-based access control
-- **Seller verification:** college ID verification, PAN card upload, and payment QR verification
-- **Marketplace safety:** AI-generated product insights, verified student profiles, verified seller badges, and secure buyer-seller communication
+Google Gemini AI enhances transparency in every product listing.
+
+```
+Seller Uploads Product
+            │
+            ▼
+Product Images + Description
+            │
+            ▼
+      Google Gemini AI
+            │
+            ├──────────────► Product Summary
+            │
+            ├──────────────► Condition Analysis
+            │
+            ├──────────────► Damage Detection
+            │
+            ├──────────────► Key Buying Points
+            │
+            ├──────────────► Price Insights
+            │
+            └──────────────► Overall Assessment
+                         │
+                         ▼
+          AI Insights Displayed to Buyers
+```
 
 ---
 
-## Project Structure
+# How We Use AI
+
+UniThrift uses **Google Gemini AI** to improve buyer confidence and reduce fraudulent listings.
+
+### Gemini analyzes
+
+* Uploaded Product Images
+* Product Description
+* Product Condition
+* Possible Visible Damage
+* Price Fairness
+* Key Buying Highlights
+* Overall Product Assessment
+
+Instead of replacing the seller's description, Gemini acts as an **independent assistant** that provides buyers with additional insights before making a purchase.
+
+This makes second-hand shopping safer, smarter, and more transparent.
+
+---
+
+# Security Features
+
+Security is one of the core pillars of UniThrift.
+
+### Authentication
+
+* Secure Login
+* Protected Routes
+* Session Management
+* Supabase Authentication
+
+### Seller Verification
+
+* College ID Verification
+* PAN Card Upload
+* Payment QR Verification
+
+### Marketplace Safety
+
+* AI-generated Product Insights
+* Verified Student Profiles
+* Verified Seller Badge
+* Secure Buyer-Seller Communication
+
+---
+
+# Project Structure
 
 ```
 UniThrift/
@@ -284,128 +498,311 @@ UniThrift/
 └── README.md
 ```
 
-## Installation
+---
 
-### 1. Clone the repository
+# Installation
+
+## Clone the Repository
 
 ```bash
 git clone https://github.com/Samriddha0207/UniThrift.git
+```
+
+Move into the project directory
+
+```bash
 cd UniThrift
 ```
 
-### 2. Install dependencies
+---
+
+## Install Dependencies
+
+Backend
 
 ```bash
-# Backend
 npm install
+```
 
-# Frontend (if located in a separate folder)
+If your frontend is inside a separate folder
+
+```bash
 cd client
 npm install
 ```
 
-### 3. Configure environment variables
+---
 
-Create a `.env` file in the project root and supply credentials for MongoDB, Supabase, and the Google Gemini API before starting the backend.
+## Environment Variables not included (To be added)
 
-### 4. Run the backend
+## Run the Backend
 
 ```bash
 node server.js
 ```
 
-### 5. Run the frontend
+---
+
+## Run the Frontend
 
 ```bash
 npm run dev
 ```
 
-### 6. Access the application
+---
 
-With both servers running, open:
+## Access the Application
+
+After both servers are running, open your browser and navigate to:
 
 ```
 http://localhost:5173
 ```
 
-*(or the port configured in your frontend setup)*
+*(or the port configured in your frontend setup).*
 
 ---
 
-## Business Model
+# Performance Goals
 
-UniThrift is designed for multiple revenue streams while keeping the marketplace affordable for students.
+UniThrift is designed with the following objectives:
 
-- **Premium seller subscriptions:** priority listings, listing analytics, a seller dashboard, a featured badge, and unlimited product uploads
-- **Featured listings:** paid promotion to the top of search results and category pages
-- **Campus partnerships:** official campus marketplaces, hostel clearance sales, college merchandise, and student exchange or event marketplaces
-- **Transaction services** *(future)*: a small convenience fee on successful transactions once secure online payments are integrated
-- **Sponsored promotions:** targeted placements for electronics, books, stationery, coaching institutes, and student discounts
-- **Future revenue opportunities:** AI-powered pricing recommendations, premium buyer memberships, campus ambassador programs, delivery partnerships, and subscription-based analytics
+* Fast page loading
+* Responsive on all devices
+* Secure authentication
+* Intelligent AI assistance
+* Scalable backend architecture
+* Easy deployment for multiple colleges
 
-## Impact
+# Business Model
 
-- **Environmental:** reduces electronic waste and encourages reuse and sustainable consumption
-- **Student:** lowers education and living costs, and improves access to study materials and electronics
-- **Community:** enables trusted student-to-student transactions and stronger campus communities
-- **Technological:** AI-assisted insights reduce fraud and improve trust in second-hand commerce
-
-## Roadmap
-
-### Phase 1 — Completed
-
-Student marketplace, authentication, product listings, seller profiles, cart, and AI product insights.
-
-### Phase 2 — In Progress
-
-Online payments, real-time chat, push notifications, wishlist, and ratings & reviews.
-
-### Phase 3 — Planned
-
-Android and iOS apps, college-wise communities, delivery integration, a recommendation engine, and AI price prediction.
-
-### Long-Term Vision
-
-Expansion beyond individual campuses into a multi-college marketplace across India, with Razorpay/Stripe payment integration, location-based product discovery, personalized recommendations, delivery tracking, and real-time notifications.
+UniThrift is designed to be a sustainable and scalable platform with multiple revenue streams while keeping the marketplace affordable for students.
 
 ---
 
-## Team
+## Premium Seller Subscription
 
-- **Md Rizwaan Rahaman**
-- **Samriddha Chaudhury**
+Verified sellers can subscribe to premium plans that unlock additional features such as:
 
-## Acknowledgements
+* Priority Product Listings
+* Listing Analytics
+* Seller Dashboard
+* Featured Seller Badge
+* Unlimited Product Uploads
 
-- **Google Gemini AI** for intelligent product analysis
-- **Supabase** for secure authentication
-- **MongoDB** for reliable data storage
-- **Node.js & Express.js** for backend development
-- Every student who inspired us to build a safer, more affordable marketplace
+---
 
-## License
+## Featured Listings
 
-**Copyright © 2026 Md Rizwaan Rahaman and Samriddha Chaudhury. All Rights Reserved.**
+Sellers can promote their products to appear at the top of search results and category pages, increasing visibility and faster sales.
 
-This repository and its contents — including source code, design assets, and documentation — are proprietary. No part of this project may be copied, modified, distributed, sublicensed, or used in any form without prior written permission from the copyright holders.
+---
 
-## Support the Project
+## Campus Partnerships
 
-If you found this project useful:
+Partnering with colleges enables:
 
-- Star this repository
-- Fork the project
-- Report issues
-- Suggest improvements
+* Official Campus Marketplace
+* Hostel Clearance Sales
+* College Merchandise
+* Student Exchange Programs
+* Campus Events Marketplace
+
+---
+
+## Transaction Services *(Future)*
+
+A small convenience fee may be introduced on successful transactions after integrating secure online payments.
+
+---
+
+## Sponsored Promotions
+
+Brands targeting students can advertise:
+
+* Electronics
+* Books
+* Stationery
+* Coaching Institutes
+* Student Discounts
+* Educational Services
+
+---
+
+## Future Revenue Opportunities
+
+* AI-powered pricing recommendations
+* Premium buyer memberships
+* Campus ambassador programs
+* Delivery partnerships
+* Subscription-based analytics
+
+---
+
+# Impact
+
+UniThrift isn't just another marketplace—it's a step toward a smarter and more sustainable campus ecosystem.
+
+### Environmental Impact
+
+* Reduce electronic waste
+* Promote reuse of quality products
+* Encourage sustainable consumption
+
+### Student Impact
+
+* Affordable education
+* Lower living expenses
+* Easier access to study materials
+* Better accessibility to electronics
+
+### Community Impact
+
+* Trusted student-to-student transactions
+* Stronger campus communities
+* Increased transparency through AI
+
+### Technological Impact
+
+* AI-assisted product insights
+* Reduced fraud
+* Smarter buying decisions
+* Better trust in second-hand commerce
+
+---
+
+# Roadmap
+
+## Phase 1 ✅
+
+* Student Marketplace
+* Authentication
+* Product Listings
+* Seller Profiles
+* Cart
+* AI Product Insights
+
+---
+
+## Phase 2
+
+* Online Payments
+* Real-time Chat
+* Push Notifications
+* Wishlist
+* Ratings & Reviews
+
+---
+
+## Phase 3
+
+* Android App
+* iOS App
+* College-wise Communities
+* Delivery Integration
+* Recommendation Engine
+* AI Price Prediction
+
+---
+
+# Future Scope
+
+UniThrift aims to become India's largest student marketplace by expanding beyond individual campuses.
+
+Future enhancements include:
+
+* Razorpay/Stripe Payment Integration
+* Location-Based Product Discovery
+* AI-Based Price Prediction
+* Personalized Product Recommendations
+* Delivery Tracking
+* Real-Time Notifications
+* Native Android & iOS Apps
+* Multi-College Marketplace
+* Expansion to Universities Across India
+
+---
+
+# Why UniThrift?
+
+| Feature                 | UniThrift | Traditional Marketplace |
+| ----------------------- | --------- | ----------------------- |
+| Student Only            | ✅         | ❌                       |
+| AI Product Insights     | ✅         | ❌                       |
+| College Verification    | ✅         | ❌                       |
+| Verified Sellers        | ✅         | ❌                       |
+| Smart Search            | ✅         | ✅                       |
+| Modern UI               | ✅         | ⚠                       |
+| Sustainable Marketplace | ✅         | ❌                       |
+
+---
+
+# 👥 Team
+
+## Team Members
+
+### Md Rizwaan Rahaman
+
+### 👨‍💻 Samriddha Chaudhury
+
+---
+
+# Built With
+
+* HTML5
+* CSS3
+* JavaScript
+* Node.js
+* Express.js
+* MongoDB
+* Supabase
+* Google Gemini AI
+* Git & GitHub
+
+---
+
+# Acknowledgements
+
+Special thanks to:
+
+* **Google Gemini AI** for intelligent product analysis.
+* **Supabase** for secure authentication.
+* **MongoDB** for reliable data storage.
+* **Node.js & Express.js** for backend development.
+* Every student who inspired us to build a safer and more affordable marketplace.
+
+---
+
+# Support the Project
+
+If you found this project useful,
+
+Star this repository
+
+Fork the project
+
+Report issues
+
+Suggest improvements
+
+Every contribution helps make UniThrift even better.
 
 ---
 
 <div align="center">
 
-**Buy Smart. Sell Smarter. Sustain Together.**
+# 🛍️ UniThrift
 
-Built by [Md Rizwaan Rahaman](#) and [Samriddha Chaudhury](#)
+### Buy Smart. Sell Smarter. Sustain Together.
 
-⭐ *If you liked this project, consider starring the repository* ⭐
+### Building India's Most Trusted Student Marketplace
+
+Made by
+
+### Md Rizwaan Rahaman
+
+### Samriddha Chaudhury
+
+**⭐ Don't forget to star this repository if you liked our project! ⭐**
 
 </div>
