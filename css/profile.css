@@ -410,7 +410,16 @@ body.dark-theme .glow-card::before {
     border: 1px solid var(--card-border);
     border-radius: 16px;
     padding: 22px 24px;
-    transition: background 0.3s, border-color 0.3s;
+    transition: background 0.3s, border-color 0.25s, box-shadow 0.25s;
+}
+
+.pcard:hover {
+    border-color: rgba(139, 92, 246, 0.35);
+    box-shadow: 0 8px 24px rgba(20, 10, 40, 0.08);
+}
+
+body.dark-theme .pcard:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .pcard-title {
@@ -493,11 +502,36 @@ textarea { resize: vertical; }
     font-size: 0.83rem;
     width: 100%;
     cursor: pointer;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, background-color 0.2s;
     outline: none;
 }
 
 .file-input:hover { border-color: var(--accent); }
+
+.file-input::file-selector-button {
+    background: linear-gradient(135deg, var(--accent-h), var(--accent));
+    color: white;
+    border: none;
+    border-radius: 7px;
+    padding: 7px 14px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    margin-right: 12px;
+    transition: opacity 0.2s;
+}
+
+.file-input::file-selector-button:hover { opacity: 0.88; }
+
+/* Once a file is chosen, swap the dashed "empty" border for a solid one so
+   it's obvious at a glance that something is queued for upload. */
+.file-input.file-input--selected {
+    border-style: solid;
+    border-color: var(--success);
+    background: rgba(16, 163, 74, 0.06);
+    color: var(--text);
+}
 
 /* =========================================
    BUTTONS
@@ -828,6 +862,35 @@ body.dark-theme .listing-price-badge {
 
 .listing-heart-btn:hover { border-color: var(--danger); color: var(--danger); }
 
+.listing-delete-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    background: transparent;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.82rem;
+    transition: all 0.2s;
+    flex: none;
+}
+
+.listing-delete-btn:hover {
+    border-color: var(--danger);
+    background: rgba(244, 63, 94, 0.1);
+    color: var(--danger);
+}
+
+.listing-delete-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* In the archived row there's no flex:1 "Quick View" button to push things
+   apart, so pin delete to the right edge next to the tag. */
+.listing-actions .listing-delete-btn:last-child { margin-left: auto; }
+.listing-actions .listing-view-btn ~ .listing-delete-btn { margin-left: 0; }
+
 .listing-archived-tag {
     font-size: 0.68rem;
     color: var(--muted);
@@ -857,6 +920,11 @@ body.dark-theme .listing-price-badge {
 .ver-info p  { font-size: 0.76rem; color: var(--muted); }
 .ver-action { padding-top: 12px; text-align: center; }
 .ver-action p { font-size: 0.8rem; color: var(--muted); margin-bottom: 10px; }
+
+.ver-doc-card { transition: border-color 0.2s, background-color 0.2s; }
+.ver-doc-card:hover { border-color: var(--accent) !important; }
+.doc-replace-btn:hover { color: var(--accent) !important; }
+.doc-delete-btn:hover { color: var(--danger) !important; opacity: 1 !important; }
 
 /* =========================================
    FOOTER
@@ -911,4 +979,88 @@ body.dark-theme .listing-price-badge {
 
 .footer-tagline {
     font-size: 0.76rem;
+}
+
+/* =========================================
+   RESPONSIVE
+   ========================================= */
+@media (max-width: 980px) {
+    .profile-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .navbar {
+        padding: 14px 20px;
+        gap: 12px;
+    }
+
+    .nav-center {
+        display: none;
+    }
+
+    .nav-search {
+        display: none;
+    }
+
+    .profile-main {
+        margin: 20px auto;
+        padding: 0 16px;
+    }
+
+    .profile-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 18px;
+        padding: 22px;
+    }
+
+    .ph-stats {
+        width: 100%;
+    }
+
+    .stat-pill {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .pcard {
+        padding: 18px 16px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .listings-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 12px;
+    }
+
+    .footer-inner {
+        grid-template-columns: 1fr;
+        gap: 28px;
+    }
+}
+
+@media (max-width: 420px) {
+    .ph-avatar-wrap {
+        width: 76px;
+        height: 76px;
+    }
+
+    .ph-avatar-wrap img {
+        width: 76px;
+        height: 76px;
+    }
+
+    .ph-identity h1 {
+        font-size: 1.3rem;
+    }
+
+    .listings-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    }
 }

@@ -8,6 +8,7 @@ const productId = params.get("id");
 // HTML ELEMENTS
 // ======================================
 const mainImage = document.getElementById("mainImage");
+if (mainImage) mainImage.onerror = () => { mainImage.src = 'https://placehold.co/600x600?text=UniThrift'; };
 const thumbnailContainer = document.getElementById("thumbnailContainer");
 const productTitle = document.getElementById("productTitle");
 const productPrice = document.getElementById("productPrice");
@@ -51,25 +52,114 @@ let currentUserName = null;
 let activeRoomId = null;
 
 // ======================================
+// TOAST NOTIFICATIONS
+// ======================================
+const toastContainer = document.getElementById("toastContainer");
+
+function showToast(message, type = "info", duration = 3500) {
+    if (!toastContainer) return;
+    const icons = { success: "fa-check", error: "fa-xmark", warning: "fa-exclamation", info: "fa-info" };
+
+    const toast = document.createElement("div");
+    toast.className = `toast toast--${type}`;
+    toast.innerHTML = `
+        <span class="toast-icon"><i class="fas ${icons[type] || icons.info}"></i></span>
+        <span class="toast-message"></span>
+        <button class="toast-close" aria-label="Dismiss"><i class="fas fa-xmark"></i></button>
+    `;
+    toast.querySelector(".toast-message").textContent = message;
+
+    const remove = () => {
+        if (!toast.isConnected) return;
+        toast.classList.add("toast--leaving");
+        toast.addEventListener("animationend", () => toast.remove(), { once: true });
+    };
+
+    let timer = setTimeout(remove, duration);
+    toast.addEventListener("mouseenter", () => clearTimeout(timer));
+    toast.addEventListener("mouseleave", () => { timer = setTimeout(remove, 1200); });
+    toast.querySelector(".toast-close").addEventListener("click", remove);
+
+    toastContainer.appendChild(toast);
+}
+
+// ======================================
+// CONFIRMATION MODAL
+// ======================================
+const confirmModal = document.getElementById("confirmModal");
+const confirmModalTitle = document.getElementById("confirmModalTitle");
+const confirmModalMessage = document.getElementById("confirmModalMessage");
+const confirmModalOk = document.getElementById("confirmModalOk");
+const confirmModalCancel = document.getElementById("confirmModalCancel");
+
+function showConfirm(message, title = "Are you sure?") {
+    if (!confirmModal) return Promise.resolve(window.confirm(message));
+
+    return new Promise(resolve => {
+        confirmModalTitle.textContent = title;
+        confirmModalMessage.textContent = message;
+        confirmModal.classList.add("open");
+
+        const cleanup = (result) => {
+            confirmModal.classList.remove("open");
+            confirmModalOk.removeEventListener("click", onOk);
+            confirmModalCancel.removeEventListener("click", onCancel);
+            confirmModal.removeEventListener("click", onOverlay);
+            document.removeEventListener("keydown", onKeydown);
+            resolve(result);
+        };
+
+        const onOk = () => cleanup(true);
+        const onCancel = () => cleanup(false);
+        const onOverlay = (e) => { if (e.target === confirmModal) cleanup(false); };
+        const onKeydown = (e) => { if (e.key === "Escape") cleanup(false); };
+
+        confirmModalOk.addEventListener("click", onOk);
+        confirmModalCancel.addEventListener("click", onCancel);
+        confirmModal.addEventListener("click", onOverlay);
+        document.addEventListener("keydown", onKeydown);
+    });
+}
+// ======================================
 // AUTH HELPERS
 // ======================================
+
 async function tryRefreshToken() {
     const refreshToken = localStorage.getItem("unithrift_refresh_token");
-    if (!refreshToken) return null;
+
+    if (!refreshToken) {
+        return null;
+    }
 
     try {
         const response = await fetch("/api/auth/refresh", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refresh_token: refreshToken })
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                refresh_token: refreshToken
+            })
         });
 
         const data = await response.json();
-        if (!response.ok || !data.success) return null;
 
-        localStorage.setItem("unithrift_session_token", data.access_token);
-        localStorage.setItem("unithrift_refresh_token", data.refresh_token);
+        if (!response.ok || !data.success) {
+            return null;
+        }
+
+        localStorage.setItem(
+            "unithrift_session_token",
+            data.access_token
+        );
+
+        localStorage.setItem(
+            "unithrift_refresh_token",
+            data.refresh_token
+        );
+
         return data.access_token;
+
     } catch (err) {
         console.error("Token refresh failed:", err);
         return null;
@@ -77,23 +167,43 @@ async function tryRefreshToken() {
 }
 
 async function authFetch(url, options = {}) {
+
     const token = localStorage.getItem("unithrift_session_token");
     const refreshToken = localStorage.getItem("unithrift_refresh_token");
 
     const buildHeaders = (accessToken) => {
         const headers = new Headers(options.headers || {});
-        if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-        if (refreshToken) headers.set("X-Refresh-Token", refreshToken);
+
+        if (accessToken) {
+            headers.set("Authorization", `Bearer ${accessToken}`);
+        }
+
+        if (refreshToken) {
+            headers.set("X-Refresh-Token", refreshToken);
+        }
+
         return headers;
     };
 
-    let response = await fetch(url, { ...options, headers: buildHeaders(token) });
-    if (response.status !== 401) return response;
+    let response = await fetch(url, {
+        ...options,
+        headers: buildHeaders(token)
+    });
+
+    if (response.status !== 401) {
+        return response;
+    }
 
     const newToken = await tryRefreshToken();
-    if (!newToken) return response;
 
-    return fetch(url, { ...options, headers: buildHeaders(newToken) });
+    if (!newToken) {
+        return response;
+    }
+
+    return fetch(url, {
+        ...options,
+        headers: buildHeaders(newToken)
+    });
 }
 
 if (chatWithSellerBtn) chatWithSellerBtn.style.display = 'none';
@@ -126,7 +236,8 @@ function renderSellerLayout(token) {
     markSoldBtn.style.cssText = "width:100%; padding:13px; border:none; border-radius:12px; background:#f59e0b; color:white; font-weight:700; font-size:1rem; cursor:pointer; transition:.2s;";
     
     markSoldBtn.addEventListener('click', async () => {
-      if (!confirm("Mark this listing as sold? This cannot be undone.")) return;
+      const confirmed = await showConfirm("Mark this listing as sold? This cannot be undone.", "Mark as Sold?");
+      if (!confirmed) return;
       markSoldBtn.textContent = "Marking...";
       markSoldBtn.disabled = true;
       try {
@@ -136,13 +247,15 @@ function renderSellerLayout(token) {
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.message);
-        window.location.reload();
+        showToast("Listing marked as sold", "success");
+        setTimeout(() => window.location.reload(), 600);
       } catch (err) {
-        alert("Failed: " + err.message);
+        showToast("Failed: " + err.message, "error");
         markSoldBtn.textContent = "Mark as Sold";
         markSoldBtn.disabled = false;
       }
     });
+    
     actionButtonsWrapper.appendChild(markSoldBtn);
   }
 
@@ -153,7 +266,8 @@ function renderSellerLayout(token) {
     deleteBtn.style.cssText = "width:100%; padding:13px; border:none; border-radius:12px; background:#ef4444; color:white; font-weight:700; font-size:1rem; cursor:pointer; transition:.2s; margin-top: 8px;";
     
     deleteBtn.addEventListener('click', async () => {
-      if (!confirm("Are you sure you want to delete this listing? This action cannot be undone.")) return;
+      const confirmed = await showConfirm("Are you sure you want to delete this listing? This action cannot be undone.", "Delete Listing?");
+      if (!confirmed) return;
       deleteBtn.textContent = "Deleting...";
       deleteBtn.disabled = true;
       try {
@@ -163,14 +277,15 @@ function renderSellerLayout(token) {
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.message);
-        alert("Product deleted successfully!");
-        window.location.href = "/marketplace";
+        showToast("Product deleted successfully!", "success");
+        setTimeout(() => { window.location.href = "/marketplace"; }, 600);
       } catch (err) {
-        alert("Failed: " + err.message);
+        showToast("Failed: " + err.message, "error");
         deleteBtn.textContent = "Delete Item";
         deleteBtn.disabled = false;
       }
     });
+    
     actionButtonsWrapper.appendChild(deleteBtn);
   }
 }
@@ -187,6 +302,7 @@ async function renderBuyerLayout(token) {
     contactSellerBtn.style.display = 'inline-flex';
     contactSellerBtn.disabled = false;
   }
+
   if (token) {
     await syncChatRoomHistory(token);
   }
@@ -237,24 +353,31 @@ async function loadProduct() {
     ]);
 
     const token = localStorage.getItem("unithrift_session_token");
-    if (token) {
-      try {
-        const r = await authFetch('/api/profile');
-        const d = await r.json();
-        if (d.success) {
-          currentUserId = d.profile?.id;
-          currentUserName = d.profile?.full_name || d.profile?.username || "User";
-        }
-      } catch (err) {
-        console.error("Profile initialization context failure:", err);
-      }
+
+if (token) {
+  try {
+    const r = await authFetch('/api/profile');
+    const d = await r.json();
+
+    if (d.success) {
+      currentUserId = d.profile?.id;
+      currentUserName =
+        d.profile?.full_name ||
+        d.profile?.username ||
+        "User";
     }
 
-    if (currentUserId && String(currentUserId) === String(targetedSellerId)) {
-      renderSellerLayout(token);
-    } else {
-      await renderBuyerLayout(token);
-    }
+  } catch (err) {
+    console.error("Profile initialization context failure:", err);
+  }
+}
+
+if (currentUserId && String(currentUserId) === String(targetedSellerId)) {
+  renderSellerLayout(token);
+} else {
+  await renderBuyerLayout(token);
+}
+
   } catch (err) {
     console.error(err);
     if (productTitle) productTitle.textContent = "Product Not Found";
@@ -442,13 +565,13 @@ if (reviewForm) {
   reviewForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const token = localStorage.getItem("unithrift_session_token");
-    if (!token) return alert("Please login first.");
+    if (!token) return showToast("Please login first.", "warning");
 
     const rating = Number(document.getElementById("rating").value);
     const review_text = document.getElementById("reviewText").value.trim();
 
-    if (!rating) return alert("Please select a rating.");
-    if (!review_text) return alert("Please write a review.");
+    if (!rating) return showToast("Please select a rating.", "warning");
+    if (!review_text) return showToast("Please write a review.", "warning");
 
     const submitBtn = reviewForm.querySelector("button[type='submit']");
     if (submitBtn) {
@@ -469,14 +592,14 @@ if (reviewForm) {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || "Failed to post");
 
-      alert("Review submitted successfully!");
+      showToast("Review submitted successfully!", "success");
       reviewForm.reset();
       
       await loadReviews(productId);
       await loadAIInsights(productId);
     } catch (err) {
       console.error("Submission Error:", err);
-      alert(`Failed to submit review: ${err.message}`);
+      showToast(`Failed to submit review: ${err.message}`, "error");
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -491,9 +614,9 @@ if (reviewForm) {
 // ======================================
 if (contactSellerBtn) {
   contactSellerBtn.addEventListener("click", () => {
-    if (!currentProduct) return alert("Product data is loading. Please wait a moment.");
+    if (!currentProduct) return showToast("Product data is loading. Please wait a moment.", "warning");
     const sellerData = currentSeller?.seller || currentSeller;
-    if (!sellerData) return alert("Seller details are unavailable right now.");
+    if (!sellerData) return showToast("Seller details are unavailable right now.", "error");
 
     const sellerName = sellerData.full_name || sellerData.username || "Registered Student";
     const sellerCollege = sellerData.college_name || "UniThrift Verified College";
@@ -628,30 +751,74 @@ function stopPolling() {
 }
 
 async function syncChatRoomHistory() {
+  const sendChatBtn = document.getElementById("sendChatBtn");
+
+  // Reset input to enabled at the start of every attempt; the MULTIPLE_BUYERS
+  // branch below re-disables it since there's no single room to send into.
+  if (chatInput) chatInput.disabled = false;
+  if (sendChatBtn) sendChatBtn.disabled = false;
+
   try {
     const roomResponse = await authFetch('/api/chat/room', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_id: productId })
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        product_id: productId
+      })
     });
 
     const roomResult = await roomResponse.json();
+
     if (!roomResult.success) {
-      throw new Error(roomResult.message || "No active chats found for this product yet.");
+      const err = new Error(roomResult.message || "No active chats found for this product yet.");
+      err.code = roomResult.code;
+      throw err;
     }
 
     activeRoomId = roomResult.room_id;
+
     loadedMessageIds.clear();
 
     if (chatMessages) {
-      chatMessages.innerHTML = '<div class="message system-msg">Welcome to campus chat! Protect your data.</div>';
+      chatMessages.innerHTML =
+        '<div class="message system-msg">Welcome to campus chat! Protect your data.</div>';
     }
+
     startPolling();
+
   } catch (err) {
-    console.error("Failed to restore history structural sync map alignment:", err);
+    console.error("Failed to restore chat room history:", err);
+    stopPolling();
+    activeRoomId = null;
+
+    // The seller has more than one interested buyer for this listing — there's
+    // no single room to open here, so point them to the full inbox instead of
+    // showing a plain error.
+    if (err.code === "MULTIPLE_BUYERS") {
+      if (chatInput) chatInput.disabled = true;
+      if (sendChatBtn) sendChatBtn.disabled = true;
+
+      if (chatMessages) {
+        chatMessages.innerHTML = `
+          <div class="empty-state-block">
+            <i class="fas fa-comments"></i>
+            <p>Multiple buyers are interested in this listing.</p>
+            <p style="margin-top:6px;font-size:0.85rem;">Manage each conversation from your inbox.</p>
+            <a href="/chat" target="_blank" rel="noopener"
+               style="display:inline-block;margin-top:14px;padding:10px 20px;border-radius:10px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;font-size:0.85rem;">
+              Open Inbox →
+            </a>
+          </div>`;
+      }
+      return;
+    }
+
     if (chatMessages) {
       chatMessages.innerHTML = `
-        <div class="message system-msg" style="background:#e11d48;color:white;border-radius:8px;padding:10px;margin:10px;">
+        <div class="message system-msg"
+             style="background:#e11d48;color:white;border-radius:8px;padding:10px;margin:10px;">
           ⚠️ Chat unavailable: ${err.message || "Please wait for a buyer to start a chat."}
         </div>`;
     }
@@ -660,22 +827,34 @@ async function syncChatRoomHistory() {
 
 if (chatWithSellerBtn) {
   chatWithSellerBtn.addEventListener("click", async () => {
+
     if (!localStorage.getItem("unithrift_session_token")) {
-      return alert("Please login to chat with the seller.");
+      return showToast("Please login to chat with the seller.", "warning");
     }
+
     if (!currentProduct) {
-      return alert("Product data is loading. Please wait a moment.");
+      return showToast("Product data is loading. Please wait a moment.", "warning");
     }
 
     const sellerData = currentSeller?.seller || currentSeller;
-    const sellerName = sellerData?.full_name || sellerData?.username || "Seller";
-    const isSeller = currentUserId && String(currentUserId) === String(currentProduct.seller_id || currentProduct.user_id);
+    const sellerName =
+      sellerData?.full_name ||
+      sellerData?.username ||
+      "Seller";
+
+    const isSeller =
+      currentUserId &&
+      String(currentUserId) ===
+      String(currentProduct.seller_id || currentProduct.user_id);
 
     if (chatSellerName) {
-      chatSellerName.textContent = isSeller ? "Buyer Chat" : sellerName;
+      chatSellerName.textContent = isSeller
+        ? "Buyer Chat"
+        : sellerName;
     }
 
     populateChatHeader();
+
     if (chatPopup) chatPopup.classList.add("open");
     if (chatInput) chatInput.focus();
 
@@ -693,32 +872,43 @@ if (closeChatBtn) {
 if (chatForm) {
   chatForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+
     const text = chatInput.value.trim();
     if (!text) return;
 
     if (!activeRoomId) {
-      alert("Chat room is not ready yet. Please wait.");
+      showToast("Chat room is not ready yet. Please wait.", "warning");
       return;
     }
+
     if (!localStorage.getItem("unithrift_session_token")) {
-      return alert("Session expired. Please log in again.");
+      return showToast("Session expired. Please log in again.", "error");
     }
 
     if (chatInput) chatInput.value = "";
 
     try {
-      const response = await authFetch(`/api/chat/rooms/${activeRoomId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message_text: text })
-      });
+      const response = await authFetch(
+        `/api/chat/rooms/${activeRoomId}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message_text: text
+          })
+        }
+      );
 
       const result = await response.json();
+
       if (result.success || response.ok) {
         await fetchMessages();
       } else {
         console.error("Failed to send message:", result.message);
       }
+
     } catch (err) {
       console.error("Transmission execution system pipeline error:", err);
     }

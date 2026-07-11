@@ -584,10 +584,13 @@ function renderListingCard(item) {
 
     const soldBadge = isSold ? `<span class="listing-sold-badge">Sold</span>` : "";
 
+    const deleteBtn = `<button class="listing-delete-btn" data-id="${item.id}" title="Delete listing"><i class="fas fa-trash"></i></button>`;
+
     const actionRow = isArch
-        ? `<span class="listing-archived-tag">Archived</span>`
+        ? `<span class="listing-archived-tag">Archived</span>${deleteBtn}`
         : `<button class="listing-view-btn" data-id="${item.id}">Quick View</button>
-           <button class="listing-heart-btn"><i class="fas fa-heart"></i></button>`;
+           <button class="listing-heart-btn"><i class="fas fa-heart"></i></button>
+           ${deleteBtn}`;
 
     return `
         <div class="listing-card ${isSold ? "is-sold" : ""}">
@@ -608,6 +611,52 @@ function renderListingCard(item) {
             </div>
         </div>`;
 }
+
+// ======================================
+// DELETE LISTING (Quick View action row)
+// ======================================
+if (listingContainer) {
+    listingContainer.addEventListener("click", async (e) => {
+        const deleteBtn = e.target.closest(".listing-delete-btn");
+        if (!deleteBtn) return;
+
+        const id = deleteBtn.getAttribute("data-id");
+        if (!id) return;
+
+        if (!confirm("Delete this listing? This cannot be undone.")) return;
+
+        const originalHTML = deleteBtn.innerHTML;
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        try {
+            const res = await authFetch(`/api/products/${id}`, { method: "DELETE" });
+            const result = await res.json().catch(() => ({ success: false }));
+
+            if (result.success) {
+                loadListings();
+            } else {
+                alert(result.message || "Failed to delete listing.");
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalHTML;
+            }
+        } catch (err) {
+            console.error("Failed to delete listing:", err);
+            alert("Something went wrong. Please try again.");
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = originalHTML;
+        }
+    });
+}
+
+// ======================================
+// FILE INPUT SELECTED-STATE (visual feedback once a file is chosen)
+// ======================================
+document.querySelectorAll(".file-input").forEach(input => {
+    input.addEventListener("change", () => {
+        input.classList.toggle("file-input--selected", input.files.length > 0);
+    });
+});
 
 // ======================================
 // GEOAPIFY LOCATION AUTOCOMPLETE

@@ -402,11 +402,11 @@ body.light-theme .theme-switch-knob {
 .trending-list {
     flex: 1;
     display: flex;
-    gap: 40px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding: 4px 6px;
-    align-items: center; /* Ensures category filters align perfectly */
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 4px 2px;
+    align-items: stretch; /* every chip gets the same height regardless of label length */
+    justify-content: flex-start;
 }
 
 .trending-list::-webkit-scrollbar {
@@ -415,35 +415,41 @@ body.light-theme .theme-switch-knob {
 
 .trend-pill {
     flex: none;
-    display: flex;
-    flex-direction: column;
+    display: inline-flex;
+    flex-direction: row;
     align-items: center;
     gap: 10px;
-    background: none;
-    border: none;
+    padding: 8px 18px 8px 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
     cursor: pointer;
     color: rgba(255, 255, 255, 0.85);
     font-size: 0.85rem;
     font-weight: 500;
-    transition: transform 0.2s ease, color 0.2s ease;
+    white-space: nowrap;
+    transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
 .trend-pill:hover,
 .trend-pill.active {
     color: white;
-    transform: translateY(-3px);
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent);
 }
 
 .trend-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.15);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.3rem;
+    font-size: 1rem;
     backdrop-filter: blur(8px);
     transition: all 0.2s ease;
 }
@@ -715,6 +721,12 @@ body.light-theme .theme-switch-knob {
     border: 1px solid var(--border);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 12px var(--shadow);
+    animation: cardFadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes cardFadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .product-card:hover {
@@ -859,12 +871,22 @@ body.light-theme .product-image-wrap {
 .cart-modal {
     position: fixed;
     inset: 0;
-    display: none;
+    display: flex;
     justify-content: center;
     align-items: center;
     background: rgba(5, 5, 5, 0.65);
     backdrop-filter: blur(8px);
     z-index: 3000;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.cart-modal.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 .cart-content {
@@ -877,6 +899,12 @@ body.light-theme .product-image-wrap {
     padding: 24px;
     box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.8);
     border: 1px solid var(--border);
+    transform: scale(0.96) translateY(10px);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cart-modal.open .cart-content {
+    transform: scale(1) translateY(0);
 }
 
 .cart-header {
@@ -1002,10 +1030,19 @@ body.light-theme .product-image-wrap {
 }
 
 .empty-cart {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
     text-align: center;
     color: var(--secondary);
-    padding: 40px 0;
+    padding: 50px 0;
     font-size: 0.95rem;
+}
+
+.empty-cart i {
+    font-size: 2.2rem;
+    color: var(--border);
 }
 
 /* =========================================
@@ -1117,10 +1154,20 @@ footer {
    EMPTY STATE
 ========================================= */
 .empty-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
     text-align: center;
-    padding: 50px;
+    padding: 70px 20px;
     color: var(--secondary);
     font-size: 1rem;
+}
+
+.empty-state i {
+    font-size: 2.4rem;
+    color: var(--border);
 }
 
 /* =========================================
@@ -1158,9 +1205,13 @@ footer {
         font-size: 1.15rem;
     }
     .trend-icon {
-        width: 46px;
-        height: 46px;
-        font-size: 1.1rem;
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+    }
+    .trend-pill {
+        padding: 6px 14px 6px 6px;
+        font-size: 0.8rem;
     }
     .footer-content {
         flex-direction: column;
@@ -1174,8 +1225,9 @@ footer {
 
 /* =========================================
    MARK AS SOLD BUTTON & STATES
+   (selectors match the classes marketplace.js actually renders)
 ========================================= */
-.sold-btn {
+.mark-sold-btn {
     width: 100%;
     border: 1px solid rgba(239, 68, 68, 0.2);
     cursor: pointer;
@@ -1193,30 +1245,271 @@ footer {
     transition: all 0.2s ease;
 }
 
-.sold-btn:hover {
+.mark-sold-btn:hover {
     background: #ef4444;
     color: white;
     border-color: #ef4444;
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
-.sold-btn:active {
+.mark-sold-btn:active {
     transform: scale(0.98);
 }
 
-.product-card.is-sold {
-    opacity: 0.65;
+.product-card--sold {
+    opacity: 0.7;
     position: relative;
 }
 
-.product-card.is-sold .product-image {
+.product-card--sold .product-image {
     filter: grayscale(80%);
 }
 
-.product-card.is-sold .sold-btn {
-    background: var(--bg);
-    color: var(--secondary);
-    border-color: var(--border);
-    cursor: not-allowed;
+.sold-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
+    z-index: 2;
+}
+
+/* =========================================
+   TOAST NOTIFICATIONS
+========================================= */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 6000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 360px;
+    width: calc(100% - 40px);
     pointer-events: none;
+}
+
+.toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: 0 12px 30px var(--shadow);
+    color: var(--text);
+    font-size: 0.88rem;
+    font-weight: 500;
+    animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast.toast--leaving {
+    animation: toastOut 0.22s ease forwards;
+}
+
+.toast-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    color: white;
+    margin-top: 1px;
+}
+
+.toast--success .toast-icon { background: #10b981; }
+.toast--error .toast-icon { background: #ef4444; }
+.toast--warning .toast-icon { background: #f59e0b; }
+.toast--info .toast-icon { background: var(--accent); }
+
+.toast-message {
+    flex: 1;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.toast-close {
+    flex: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--secondary);
+    font-size: 0.75rem;
+    padding: 2px;
+    margin-top: 2px;
+}
+
+.toast-close:hover {
+    color: var(--text);
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toastOut {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(8px) scale(0.97); }
+}
+
+/* =========================================
+   CONFIRMATION MODAL
+========================================= */
+.confirm-modal-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(5, 5, 5, 0.65);
+    backdrop-filter: blur(8px);
+    z-index: 6500;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.confirm-modal-overlay.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.confirm-modal-box {
+    width: 380px;
+    max-width: 90%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    text-align: center;
+    box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.8);
+    transform: scale(0.95) translateY(10px);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.confirm-modal-overlay.open .confirm-modal-box {
+    transform: scale(1) translateY(0);
+}
+
+.confirm-modal-icon {
+    width: 52px;
+    height: 52px;
+    margin: 0 auto 16px auto;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+}
+
+.confirm-modal-box h3 {
+    font-size: 1.15rem;
+    margin-bottom: 8px;
+}
+
+.confirm-modal-box p {
+    color: var(--secondary);
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+.confirm-modal-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.confirm-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.confirm-btn--ghost {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.confirm-btn--ghost:hover {
+    background: var(--card-hover);
+}
+
+.confirm-btn--danger {
+    background: #ef4444;
+    color: white;
+}
+
+.confirm-btn--danger:hover {
+    background: #dc2626;
+}
+
+/* =========================================
+   MOBILE REFINEMENTS (toasts, modals, cards)
+========================================= */
+@media (max-width: 480px) {
+    .toast-container {
+        left: 12px;
+        right: 12px;
+        bottom: 16px;
+        max-width: none;
+        width: auto;
+    }
+
+    .confirm-modal-box {
+        padding: 22px;
+    }
+
+    .confirm-modal-actions {
+        flex-direction: column-reverse;
+    }
+
+    .cart-content {
+        padding: 18px;
+        width: 94%;
+        max-height: 85vh;
+    }
+
+    .cart-item {
+        gap: 10px;
+    }
+
+    .cart-item-img {
+        width: 60px;
+        height: 60px;
+    }
+
+    .product-content {
+        padding: 16px;
+    }
+
+    .sidebar {
+        padding: 18px;
+    }
+
+    .filter-btn {
+        padding: 13px;
+    }
 }

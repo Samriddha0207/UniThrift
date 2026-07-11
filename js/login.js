@@ -11,22 +11,24 @@ window.onloadTurnstileCallback = function () {
 function renderTurnstile() {
     if (!window.turnstile) return;
 
-    const loginForm = document.getElementById("loginForm");
     const signupForm = document.getElementById("signupForm");
-
-    // Turnstile only ever lives on the login or signup form, never the OTP step
-    const isLoginVisible = loginForm && loginForm.style.display !== "none";
     const isSignupVisible = signupForm && signupForm.style.display !== "none";
-    const activeForm = isLoginVisible ? loginForm : (isSignupVisible ? signupForm : null);
-    if (!activeForm) return;
 
-    // Remove existing widget cleanly if switching forms
+    // If signup is not visible (i.e., we are on Login or OTP), remove the widget completely
+    if (!isSignupVisible) {
+        if (turnstileWidgetId !== null) {
+            turnstile.remove(turnstileWidgetId);
+            turnstileWidgetId = null;
+        }
+        return;
+    }
+
+    // Clean up existing widget before re-rendering on the signup form
     if (turnstileWidgetId !== null) {
         turnstile.remove(turnstileWidgetId);
         turnstileWidgetId = null;
     }
 
-    // Ensure our container element exists
     let container = document.getElementById("turnstile-container");
     if (!container) {
         container = document.createElement("div");
@@ -34,15 +36,14 @@ function renderTurnstile() {
         container.style.marginBottom = "1rem";
     }
 
-    // Move container dynamically to active form (before the error/submit block)
-    const errorMsg = activeForm.querySelector(".form-error");
+    // Always append specifically to the signup form now
+    const errorMsg = signupForm.querySelector(".form-error");
     if (errorMsg) {
-        activeForm.insertBefore(container, errorMsg);
+        signupForm.insertBefore(container, errorMsg);
     } else {
-        activeForm.appendChild(container);
+        signupForm.appendChild(container);
     }
 
-    // Render explicitly and store new widget ID
     turnstileWidgetId = turnstile.render("#turnstile-container", {
         sitekey: TURNSTILE_SITEKEY,
         theme: "light"
@@ -123,7 +124,7 @@ function showForm(name) {
     if (toggleBtn)  toggleBtn.textContent  = name === "login" ? "Sign Up" : "Login";
 
     clearMessages();
-    renderTurnstile(); // no-op when the OTP form is active
+    renderTurnstile(); // will mount on signup, unmount on login/otp
 }
 
 if (toggleBtn) {
@@ -191,7 +192,7 @@ function setButtonLoading(btnId, loading, defaultText) {
 }
 
 // ======================================
-// LOGIN
+// LOGIN (No Turnstile)
 // ======================================
 if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
@@ -200,14 +201,9 @@ if (loginForm) {
 
         const loginIdentifier = document.getElementById("loginIdentifier").value.trim();
         const password        = document.getElementById("loginPassword").value;
-        const turnstileToken  = (window.turnstile && turnstileWidgetId !== null) ? turnstile.getResponse(turnstileWidgetId) : "";
 
         if (!loginIdentifier || !password) {
             return showError("loginError", "Please fill in all fields.");
-        }
-
-        if (!turnstileToken) {
-            return showError("loginError", "Please complete the security check.");
         }
 
         setButtonLoading("loginSubmitBtn", true, "Login");
@@ -218,16 +214,13 @@ if (loginForm) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     loginIdentifier, 
-                    password,
-                    'cf-turnstile-response': turnstileToken 
+                    password
                 })
             });
 
             const result = await response.json();
 
             if (!result.success) {
-                if (window.turnstile && turnstileWidgetId !== null) turnstile.reset(turnstileWidgetId);
-
                 if (result.needs_verification && result.email) {
                     enterOtpFlow(result.email, { autoResend: true, message: result.message });
                     return;
@@ -250,7 +243,6 @@ if (loginForm) {
 
         } catch (err) {
             console.error("Login error:", err);
-            if (window.turnstile && turnstileWidgetId !== null) turnstile.reset(turnstileWidgetId);
             showError("loginError", "Network error. Please try again.");
         } finally {
             setButtonLoading("loginSubmitBtn", false, "Login");
