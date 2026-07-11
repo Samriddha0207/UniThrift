@@ -76,26 +76,43 @@ if (logoutAccountBtn) logoutAccountBtn.addEventListener("click", logout);
 // ======================================
 // TOKEN REFRESH
 // ======================================
+// Refresh tokens are single-use — if several authFetch calls hit a 401 at
+// the same moment (common on pages that fire multiple requests on load),
+// each one must NOT independently redeem the same stored refresh token,
+// since the second call to reach Supabase would get "Already Used". This
+// in-flight promise makes every concurrent caller share the same request.
+let _refreshInFlight = null;
+
 async function tryRefreshToken() {
-    const refreshToken = localStorage.getItem("unithrift_refresh_token");
-    if (!refreshToken) return null;
-    try {
-        const res = await fetch("/api/auth/refresh", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refresh_token: refreshToken })
-        });
-        if (!res.ok) return null;
-        const result = await res.json().catch(() => ({ success: false }));
-        if (result.success && result.access_token) {
-            localStorage.setItem("unithrift_session_token", result.access_token);
-            if (result.refresh_token) localStorage.setItem("unithrift_refresh_token", result.refresh_token);
-            return result.access_token;
+    if (_refreshInFlight) return _refreshInFlight;
+
+    _refreshInFlight = (async () => {
+        const refreshToken = localStorage.getItem("unithrift_refresh_token");
+        if (!refreshToken) return null;
+        try {
+            const res = await fetch("/api/auth/refresh", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ refresh_token: refreshToken })
+            });
+            if (!res.ok) return null;
+            const result = await res.json().catch(() => ({ success: false }));
+            if (result.success && result.access_token) {
+                localStorage.setItem("unithrift_session_token", result.access_token);
+                if (result.refresh_token) localStorage.setItem("unithrift_refresh_token", result.refresh_token);
+                return result.access_token;
+            }
+        } catch (err) {
+            console.warn("Token refresh failed:", err);
         }
-    } catch (err) {
-        console.warn("Token refresh failed:", err);
+        return null;
+    })();
+
+    try {
+        return await _refreshInFlight;
+    } finally {
+        _refreshInFlight = null;
     }
-    return null;
 }
 
 // ======================================

@@ -14,14 +14,12 @@ const productTitle = document.getElementById("productTitle");
 const productPrice = document.getElementById("productPrice");
 const productCondition = document.getElementById("productCondition");
 const deliveryDate = document.getElementById("deliveryDate");
-const warranty = document.getElementById("warranty");
 const paymentMethods = document.getElementById("paymentMethods");
 const productDescription = document.getElementById("productDescription");
 const sellerInfo = document.getElementById("sellerInfo");
 const aiInsights = document.getElementById("aiInsights");
 const reviewsContainer = document.getElementById("reviewsContainer");
 const reviewForm = document.getElementById("reviewForm");
-const verificationInfo = document.getElementById("verificationInfo");
 
 const actionButtonsWrapper = document.querySelector('.action-buttons');
 
@@ -124,45 +122,62 @@ function showConfirm(message, title = "Are you sure?") {
 // AUTH HELPERS
 // ======================================
 
+// Refresh tokens are single-use — if several authFetch calls hit a 401 at
+// the same moment (common on pages that fire multiple requests on load),
+// each one must NOT independently redeem the same stored refresh token,
+// since the second call to reach Supabase would get "Already Used". This
+// in-flight promise makes every concurrent caller share the same request.
+let _refreshInFlight = null;
+
 async function tryRefreshToken() {
-    const refreshToken = localStorage.getItem("unithrift_refresh_token");
+    if (_refreshInFlight) return _refreshInFlight;
 
-    if (!refreshToken) {
-        return null;
-    }
+    _refreshInFlight = (async () => {
+        const refreshToken = localStorage.getItem("unithrift_refresh_token");
 
-    try {
-        const response = await fetch("/api/auth/refresh", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                refresh_token: refreshToken
-            })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
+        if (!refreshToken) {
             return null;
         }
 
-        localStorage.setItem(
-            "unithrift_session_token",
-            data.access_token
-        );
+        try {
+            const response = await fetch("/api/auth/refresh", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    refresh_token: refreshToken
+                })
+            });
 
-        localStorage.setItem(
-            "unithrift_refresh_token",
-            data.refresh_token
-        );
+            const data = await response.json();
 
-        return data.access_token;
+            if (!response.ok || !data.success) {
+                return null;
+            }
 
-    } catch (err) {
-        console.error("Token refresh failed:", err);
-        return null;
+            localStorage.setItem(
+                "unithrift_session_token",
+                data.access_token
+            );
+
+            localStorage.setItem(
+                "unithrift_refresh_token",
+                data.refresh_token
+            );
+
+            return data.access_token;
+
+        } catch (err) {
+            console.error("Token refresh failed:", err);
+            return null;
+        }
+    })();
+
+    try {
+        return await _refreshInFlight;
+    } finally {
+        _refreshInFlight = null;
     }
 }
 
@@ -322,7 +337,6 @@ async function loadProduct() {
     productPrice.textContent = `₹${Number(currentProduct.price).toLocaleString('en-IN')}`;
     productCondition.textContent = `Condition: ${currentProduct.condition}`;
     deliveryDate.textContent = currentProduct.delivery_date || "Not specified";
-    warranty.textContent = currentProduct.warranty || "No warranty";
     paymentMethods.textContent = currentProduct.payment_methods || "UPI";
     productDescription.textContent = currentProduct.description;
 
@@ -344,7 +358,6 @@ async function loadProduct() {
       }
     }
 
-    renderAIVerification(currentProduct.ai_verification_status);
     await Promise.all([
       loadSeller(targetedSellerId),
       loadImages(currentProduct.id),
@@ -381,35 +394,6 @@ if (currentUserId && String(currentUserId) === String(targetedSellerId)) {
   } catch (err) {
     console.error(err);
     if (productTitle) productTitle.textContent = "Product Not Found";
-  }
-}
-
-// ======================================
-// RENDER AI VERIFICATION
-// ======================================
-function renderAIVerification(statusText) {
-  if (!verificationInfo) return;
-  if (!statusText) {
-    verificationInfo.innerHTML = `<p style="color: #b5b5b5; margin: 0;">No verification log data exists for this item.</p>`;
-    return;
-  }
-
-  if (statusText === "VERIFIED") {
-    verificationInfo.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="background: #10b981; color: white; padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">VERIFIED</span>
-        <p style="margin: 0; color: #e5e7eb;">Product layout passes description metrics. No physical flaws detected.</p>
-      </div>
-    `;
-    verificationInfo.style.borderLeft = "5px solid #10b981";
-  } else {
-    verificationInfo.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="background: #ef4444; color: white; padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">FLAGGED ISSUE</span>
-        <p style="margin: 0; color: #fca5a5; font-weight: 500;">${statusText}</p>
-      </div>
-    `;
-    verificationInfo.style.borderLeft = "5px solid #ef4444";
   }
 }
 

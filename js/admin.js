@@ -77,10 +77,10 @@ async function loadQueue() {
         queue = [];
         (result.pending || []).forEach(p => {
             if (p.college_id_url && !p.student_verified) {
-                queue.push({ userId: p.id, type: "student", username: p.username, doc_url: p.college_id_url, confidence: p.ai_id_confidence });
+                queue.push({ userId: p.id, type: "student", username: p.username, doc_url: p.college_id_url });
             }
             if (p.pan_url && p.payment_qr_url && !p.seller_verified) {
-                queue.push({ userId: p.id, type: "seller", username: p.username, pan_url: p.pan_url, qr_url: p.payment_qr_url, confidence: p.ai_pan_confidence, pan_number: p.pan_number_ai });
+                queue.push({ userId: p.id, type: "seller", username: p.username, pan_url: p.pan_url, qr_url: p.payment_qr_url });
             }
         });
 
@@ -118,12 +118,10 @@ function renderQueue() {
 
     queueEl.innerHTML = items.map(item => {
         const k = keyOf(item);
-        const conf = item.confidence != null ? `${Math.round(item.confidence * 100)}%` : "—";
         return `
         <div class="q-item ${k === selectedKey ? "selected" : ""}" data-key="${k}">
             <div class="q-top">
                 <span class="q-name">${item.username || "Unknown"}</span>
-                <span class="q-conf">${conf}</span>
             </div>
             <span class="q-type">${item.type}</span>
         </div>`;
@@ -136,21 +134,11 @@ function renderQueue() {
     renderDetail(items.find(i => keyOf(i) === selectedKey));
 }
 
-function confidenceColor(c) {
-    if (c == null) return "var(--muted)";
-    if (c >= 0.75) return "var(--green)";
-    if (c >= 0.5) return "var(--amber)";
-    return "var(--red)";
-}
-
 function renderDetail(item) {
     if (!item) {
         detailEl.innerHTML = `<div class="detail-empty"><i class="fas fa-inbox"></i><span>Nothing selected</span></div>`;
         return;
     }
-
-    const confPct = item.confidence != null ? Math.round(item.confidence * 100) : null;
-    const color   = confidenceColor(item.confidence);
 
     const docsHtml = item.type === "student"
         ? docCard("College ID", item.doc_url)
@@ -168,13 +156,6 @@ function renderDetail(item) {
                 <span><kbd>↓</kbd>next</span>
             </div>
         </div>
-
-        <div class="exposure">
-            <div class="exposure-label"><span>AI CONFIDENCE</span><span>${confPct != null ? confPct + "%" : "n/a"}</span></div>
-            <div class="exposure-track"><div class="exposure-fill" style="width:${confPct ?? 0}%;background:${color};"></div></div>
-        </div>
-
-        ${item.type === "seller" && item.pan_number ? `<div class="pan-line"><span>PAN (AI read):</span> ${item.pan_number}</div>` : ""}
 
         <div class="docs">${docsHtml}</div>
 

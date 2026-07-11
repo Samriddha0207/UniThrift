@@ -43,6 +43,33 @@ const supabaseAuth = createClient(
     { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
+// ---- Refresh-token single-flight de-duplication ----
+// Supabase refresh tokens are single-use and rotate on redemption. When a page
+// fires several authenticated requests in parallel with an expired access
+// token, each one reads the same (still-stale) refresh token from the client
+// before any response has come back to update it. Without de-duplication,
+// only the first of those concurrent requests actually succeeds — every
+// other one redeems an already-rotated token and fails with
+// "Invalid Refresh Token: Already Used". This map ensures concurrent callers
+// with the same refresh token share a single in-flight Supabase call instead
+// of racing each other.
+const refreshInFlight = new Map(); // refresh_token -> Promise<{data, error}>
+
+function refreshSessionDeduped(refreshToken) {
+    if (refreshInFlight.has(refreshToken)) {
+        return refreshInFlight.get(refreshToken);
+    }
+    const promise = supabaseAuth.auth.refreshSession({ refresh_token: refreshToken })
+        .finally(() => {
+            // Keep the result cached briefly so requests that were already
+            // in flight (but hadn't called us yet) still hit the cache
+            // instead of redeeming the now-rotated token themselves.
+            setTimeout(() => refreshInFlight.delete(refreshToken), 5000);
+        });
+    refreshInFlight.set(refreshToken, promise);
+    return promise;
+}
+
 const GEMINI_MODEL = "gemini-2.5-flash";
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -143,7 +170,7 @@ async function createNotification(userId, message, type = 'info', referenceId = 
     if (error) console.error('createNotification error:', error.message);
 }
 
-// Keep verifyTurnstile function as it is still needed for /api/signup
+// Verifies a Cloudflare Turnstile token. Used by /api/signup and /api/listings/create
 async function verifyTurnstile(token, remoteIp) {
     if (!TURNSTILE_SECRET_KEY) {
         console.error('TURNSTILE_SECRET_KEY is not configured.');
@@ -226,9 +253,7 @@ async function getUserFromToken(req) {
         throw new AuthError('Session expired. Please log in again.');
     }
 
-    const { data: refreshData, error: refreshError } = await supabaseAuth.auth.refreshSession({
-        refresh_token: refreshToken
-    });
+    const { data: refreshData, error: refreshError } = await refreshSessionDeduped(refreshToken);
 
     if (refreshError || !refreshData?.user) {
         console.error('Token refresh failed:', refreshError?.message);
@@ -395,7 +420,7 @@ app.post('/api/auth/refresh', async (req, res) => {
     const { refresh_token } = req.body;
     if (!refresh_token) return res.status(400).json({ success: false, message: 'No refresh token' });
     try {
-        const { data, error } = await supabaseAuth.auth.refreshSession({ refresh_token });
+        const { data, error } = await refreshSessionDeduped(refresh_token);
         if (error || !data.session) throw new Error(error?.message || 'Refresh failed');
         return res.json({
             success:       true,
@@ -440,7 +465,7 @@ app.post('/api/signup', signupLimiter, async (req, res) => {
         const userId = signUpData?.user?.id;
         
         try {
-            await issueSignupOtp(email, userId, username);
+            await issueSignupOtp(email, userId);
         } catch (emailErr) {
             console.error("OTP Email Dispatch Error:", emailErr);
             return res.status(201).json({
@@ -460,7 +485,7 @@ app.post('/api/signup', signupLimiter, async (req, res) => {
     }
 });
 
-async function issueSignupOtp(email, userId, username) {
+async function issueSignupOtp(email, userId) {
     const otp = generateOTP();
     const otpHash = hashOTP(otp);
     const expiresAt = createExpiry(10);
@@ -1018,6 +1043,48 @@ app.get('/api/products/:id/ai-insights', async (req, res) => {
     }
 });
 
+// ---- MARK LISTING AS SOLD (seller only) ----
+app.patch('/api/products/:id/sold', async (req, res) => {
+    try {
+        const user = await getUserFromToken(req);
+        const { data: product, error: fetchError } = await supabase
+            .from('products').select('user_id').eq('id', req.params.id).maybeSingle();
+        if (fetchError) throw fetchError;
+        if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+        if (product.user_id !== user.id)
+            return res.status(403).json({ success: false, message: 'You can only update your own listings.' });
+
+        const { error } = await supabase
+            .from('products').update({ is_sold: true }).eq('id', req.params.id);
+        if (error) throw error;
+
+        return res.json({ success: true });
+    } catch (error) {
+        return res.status(error.status || 500).json({ success: false, message: error.message });
+    }
+});
+
+// ---- DELETE LISTING (seller only) ----
+app.delete('/api/products/:id', async (req, res) => {
+    try {
+        const user = await getUserFromToken(req);
+        const { data: product, error: fetchError } = await supabase
+            .from('products').select('user_id').eq('id', req.params.id).maybeSingle();
+        if (fetchError) throw fetchError;
+        if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+        if (product.user_id !== user.id)
+            return res.status(403).json({ success: false, message: 'You can only delete your own listings.' });
+
+        await supabase.from('product_images').delete().eq('product_id', req.params.id);
+        const { error } = await supabase.from('products').delete().eq('id', req.params.id);
+        if (error) throw error;
+
+        return res.json({ success: true });
+    } catch (error) {
+        return res.status(error.status || 500).json({ success: false, message: error.message });
+    }
+});
+
 app.post('/api/listings/create', async (req, res) => { 
     try { 
         const user = await getUserFromToken(req); 
@@ -1315,11 +1382,48 @@ app.post('/api/chat/rooms/:room_id/messages', async (req, res) => {
         if (!room || (room.buyer_id !== user.id && room.seller_id !== user.id))
             return res.status(403).json({ success: false, message: 'Access denied' });
 
+        const trimmedText = message_text.trim();
         const { data: msg, error } = await supabase
             .from('messages')
-            .insert({ room_id: req.params.room_id, sender_id: user.id, message_text: message_text.trim() })
+            .insert({ room_id: req.params.room_id, sender_id: user.id, message_text: trimmedText })
             .select().single();
         if (error) throw error;
+
+        // Notify the other party in the room — persisted row (so it shows up on
+        // next load / via the postgres_changes listener) plus an instant broadcast
+        // (so it shows up live without a refresh) on the Updates page.
+        const recipientId = room.buyer_id === user.id ? room.seller_id : room.buyer_id;
+        if (recipientId) {
+            const { data: senderProfile } = await supabase
+                .from('profiles').select('full_name, username').eq('id', user.id).single();
+            const senderName = senderProfile?.full_name || senderProfile?.username || 'A student';
+            const preview = trimmedText.length > 80 ? `${trimmedText.slice(0, 80)}…` : trimmedText;
+
+            await createNotification(
+                recipientId,
+                `New message from ${senderName}: "${preview}"`,
+                'message',
+                req.params.room_id
+            );
+
+            try {
+                await supabase.channel(`notifications:${recipientId}`).send({
+                    type: 'broadcast',
+                    event: 'new_msg_alert',
+                    payload: {
+                        msg: preview,
+                        senderName,
+                        senderId: user.id,
+                        roomId: req.params.room_id
+                    }
+                });
+            } catch (broadcastErr) {
+                // Live delivery is best-effort; the persisted notification above
+                // already guarantees the recipient sees it on next load.
+                console.error('Realtime broadcast failed:', broadcastErr.message);
+            }
+        }
+
         return res.json({ success: true, message: msg });
     } catch (err) {
         return res.status(err.status || 500).json({ success: false, message: err.message });
