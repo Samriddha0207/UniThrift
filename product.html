@@ -324,6 +324,25 @@
 
     </footer>
 
+    <!-- TOAST NOTIFICATIONS -->
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- CONFIRMATION MODAL -->
+    <div id="confirmModal" class="confirm-modal-overlay">
+        <div class="confirm-modal-box">
+            <div class="confirm-modal-icon"><i class="fas fa-triangle-exclamation"></i></div>
+            <h3 id="confirmModalTitle">Are you sure?</h3>
+            <p id="confirmModalMessage">This action cannot be undone.</p>
+            <div class="confirm-modal-actions">
+                <button id="confirmModalCancel" class="confirm-btn confirm-btn--ghost">Cancel</button>
+                <button id="confirmModalOk" class="confirm-btn confirm-btn--danger">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <script src="/js/product.js"></script>
 

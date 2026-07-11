@@ -144,6 +144,7 @@ async function createNotification(userId, message, type = 'info', referenceId = 
     if (error) console.error('createNotification error:', error.message);
 }
 
+// Keep verifyTurnstile function as it is still needed for /api/signup
 async function verifyTurnstile(token, remoteIp) {
     if (!TURNSTILE_SECRET_KEY) {
         console.error('TURNSTILE_SECRET_KEY is not configured.');
@@ -219,7 +220,7 @@ async function getUserFromToken(req) {
 
     const { data, error } = await supabaseAuth.auth.getUser(token);
     if (data?.user && !error)
-        return { id: data.user.id, email: data.user.email };
+        return { id: data.user.id, email: data.user.email, created_at: data.user.created_at };
     const refreshToken = (req.headers['x-refresh-token'] || '').trim();
     if (!refreshToken) {
         console.error('Supabase getUser failed:', error?.message);
@@ -237,7 +238,7 @@ async function getUserFromToken(req) {
     req._newAccessToken  = refreshData.session.access_token;
     req._newRefreshToken = refreshData.session.refresh_token;
 
-    return { id: refreshData.user.id, email: refreshData.user.email };
+    return { id: refreshData.user.id, email: refreshData.user.email, created_at: refreshData.user.created_at };
 }
 
 async function requireAdmin(req) {
@@ -564,16 +565,14 @@ app.post('/api/resend-otp', otpResendLimiter, async (req, res) => {
     }
 });
 
+// =========================================================================
+// LOGIN API ENDPOINT
+// =========================================================================
 app.post('/api/login', loginLimiter, async (req, res) => {
     let { loginIdentifier, password } = req.body;
-    const turnstileToken = req.body['cf-turnstile-response'];
 
     if (!loginIdentifier || !password)
         return res.status(400).json({ success: false, message: 'All fields are required.' });
-
-    const humanVerified = await verifyTurnstile(turnstileToken, req.ip);
-    if (!humanVerified)
-        return res.status(400).json({ success: false, message: 'Bot verification failed. Please try again.' });
 
     let targetEmail = sanitizeString(loginIdentifier, 254).toLowerCase();
     password        = sanitizeString(password, 128);
@@ -586,6 +585,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                 return res.status(400).json({ success: false, message: 'No account found matching that username.' });
             targetEmail = emailResult;
         }
+        
         const { data, error } = await supabaseAuth.auth.signInWithPassword({ email: targetEmail, password });
 
         if (error) {
@@ -599,6 +599,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
             }
             throw error;
         }
+        
         if (!data.user?.email_confirmed_at) {
             if (data.session?.access_token) {
                 await supabase.auth.admin.signOut(data.session.access_token).catch(() => {});
@@ -614,6 +615,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         const token         = data.session?.access_token;
         const refresh_token = data.session?.refresh_token;
         if (!token) throw new Error('Login succeeded but no session token was returned.');
+        
         return res.json({ success: true, message: 'Welcome back to UniThrift!', token, refresh_token });
     } catch (error) {
         return res.status(400).json({ success: false, message: 'Invalid credentials. Please try again.' });
@@ -633,6 +635,7 @@ app.get('/api/profile', async (req, res) => {
             success:  true,
             username: profile?.username || user.email?.split('@')[0] || 'User',
             email:    user.email,
+            created_at: user.created_at,
             profile:  profile || {}
         });
     } catch (error) {

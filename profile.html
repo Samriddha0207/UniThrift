@@ -123,13 +123,15 @@
                         <span class="badge-status badge-pending" id="sellerStatus">Checking...</span>
                     </div>
                     <p class="pcard-sub">Upload PAN Card + UPI QR to unlock selling.</p>
-                    <div class="form-group">
-                        <label for="panCard">PAN Card</label>
-                        <input type="file" id="panCard" accept="image/*,application/pdf" class="file-input">
-                    </div>
-                    <div class="form-group">
-                        <label for="paymentQr">Payment QR Code</label>
-                        <input type="file" id="paymentQr" accept="image/*" class="file-input">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="panCard">PAN Card</label>
+                            <input type="file" id="panCard" accept="image/*,application/pdf" class="file-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="paymentQr">Payment QR Code</label>
+                            <input type="file" id="paymentQr" accept="image/*" class="file-input">
+                        </div>
                     </div>
                     <button class="btn btn-primary" id="sellerVerifyBtn" type="button">
                         <i class="fas fa-upload"></i> Submit for Verification
