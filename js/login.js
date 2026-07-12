@@ -1,4 +1,28 @@
 // ======================================
+// OAUTH CALLBACK HANDLER
+// Supabase sends the browser back here with the session in the URL hash
+// (#access_token=...&refresh_token=...) after Google login completes.
+// Nothing else in this file reads that hash, so without this block the
+// tokens just sit unused in the URL and the user lands back on this page
+// looking logged out.
+// ======================================
+(function handleOAuthCallback() {
+    if (!window.location.hash || !window.location.hash.includes("access_token")) return;
+
+    const hashParams   = new URLSearchParams(window.location.hash.slice(1));
+    const accessToken  = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+    if (!accessToken) return;
+
+    localStorage.setItem("unithrift_session_token", accessToken);
+    if (refreshToken) localStorage.setItem("unithrift_refresh_token", refreshToken);
+
+    // Strip the tokens out of the URL before navigating away
+    history.replaceState(null, "", window.location.pathname);
+    window.location.href = "/marketplace";
+})();
+
+// ======================================
 // TURNSTILE WIDGET MANAGEMENT
 // ======================================
 let turnstileWidgetId = null;
@@ -588,11 +612,6 @@ if (googleLoginBtn) {
             localStorage.removeItem("unithrift_refresh_token");
             return;
         }
-
-        // Server may have silently refreshed an expired access token using the
-        // X-Refresh-Token header above — persist the rotated pair so the
-        // marketplace page we're about to redirect to doesn't inherit a
-        // dead access token.
         const newAccess  = response.headers.get("X-New-Access-Token");
         const newRefresh = response.headers.get("X-New-Refresh-Token");
         if (newAccess)  localStorage.setItem("unithrift_session_token", newAccess);
