@@ -436,8 +436,6 @@ Security is one of the core pillars of UniThrift.
 * Verified Seller Badge
 * Secure Buyer-Seller Communication
 
----
----
 
 # Installation
 
@@ -469,8 +467,6 @@ cd client
 npm install
 ```
 
----
-
 ## Environment Variables not included (To be added)
 
 ## Run the Backend
@@ -481,22 +477,13 @@ node server.js
 
 ---
 
-## Run the Frontend
-
-```bash
-npm run dev
-```
-
----
-
 ## Access the Application
 
 After both servers are running, open your browser and navigate to:
 
 ```
-http://localhost:5173
-```
----
+http://localhost:3000
+
 
 # Performance Goals
 
@@ -513,9 +500,6 @@ UniThrift is designed with the following objectives:
 
 UniThrift is designed to be a sustainable and scalable platform with multiple revenue streams while keeping the marketplace affordable for students.
 
----
-
----
 
 ## Campus Partnerships
 
@@ -527,11 +511,10 @@ Partnering with colleges enables:
 * Student Exchange Programs
 * Campus Events Marketplace
 
----
 
 ## Transaction Services *(Future)*
 
-A small convenience fee may be introduced on successful transactions after integrating secure online payments.
+A small convenience fee may be introduced on successful transactions after integrating secure online payments. [COMING SOON IN V2]
 
 ---
 
@@ -548,7 +531,7 @@ Brands targeting students can advertise:
 
 ---
 
-## Future Revenue Opportunities
+## Future Revenue Opportunities                                                   
 
 * AI-powered pricing recommendations
 * Premium buyer memberships
@@ -590,7 +573,7 @@ Brands targeting students can advertise:
 
 # Roadmap
 
-## Phase 1 ✅
+## Phase 1 
 
 * Student Marketplace
 * Authentication
@@ -625,23 +608,11 @@ Future enhancements include:
 
 ## Team Members
 
-### Md Rizwaan Rahaman - Backend Server Management + Scalability
+### Md Rizwaan Rahaman - Backend Server Management + Scalability + Debugging + Testing, System Design
 
-###  Samriddha Chaudhury - Frontend, Debugging + Testing, System Design
+###  Samriddha Chaudhury - Frontend + Deployment
 
----
 
-# Acknowledgements
-
-Special thanks to:
-
-* **Google Gemini AI** for intelligent product analysis.
-* **Supabase** for secure authentication.
-* **MongoDB** for reliable data storage.
-* **Node.js & Express.js** for backend development.
-* Every student who inspired us to build a safer and more affordable marketplace.
-
----
 
 # Support the Project
 
