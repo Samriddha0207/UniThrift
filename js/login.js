@@ -4,10 +4,6 @@
 let turnstileWidgetId = null;
 const TURNSTILE_SITEKEY = "0x4AAAAAADyHfUVt4-tqoZhk";
 
-window.onloadTurnstileCallback = function () {
-    renderTurnstile();
-};
-
 function renderTurnstile() {
     if (!window.turnstile) return;
 
@@ -49,6 +45,11 @@ function renderTurnstile() {
         theme: "light"
     });
 }
+window.renderTurnstile = renderTurnstile;
+
+// Turnstile may have already finished loading (and called the head stub) before
+// this script executed — catch up on that missed call now.
+if (window.__turnstileReady) renderTurnstile();
 
 // ======================================
 // TYPING ANIMATION
