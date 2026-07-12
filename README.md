@@ -6,7 +6,7 @@
 
 ### India's AI-Powered Student Marketplace
 
-[![Made with MERN](https://img.shields.io/badge/MERN-Full%20Stack-green?style=for-the-badge)]()
+[![Made with Node.js](https://img.shields.io/badge/Backend-Node.js%20%26%20Express-green?style=for-the-badge)]()
 [![Supabase](https://img.shields.io/badge/Auth-Supabase-3ECF8E?style=for-the-badge)]()
 [![Gemini AI](https://img.shields.io/badge/AI-Gemini-blue?style=for-the-badge)]()
 
@@ -119,7 +119,7 @@ UniThrift uses **Supabase Authentication** to ensure that only registered users 
 * Modern Responsive UI
 
 <p align="center">
-  <img src="screenshots/login.png" width="900" alt="Login Page">
+  <img src="screenshots/login1.jpg" width="900" alt="Login Page">
 </p>
 ---
 
@@ -136,7 +136,7 @@ The registration process includes:
 * Future-ready Student Verification
 
 <p align="center">
-  <img src="screenshots/signup.png" width="900" alt="Signup Page">
+  <img src="screenshots/login2.jpg" width="900" alt="Signup Page">
 </p>
 
 ---
@@ -168,7 +168,7 @@ Students can browse products ranging from
 * Accessories
 
 <p align="center">
-  <img src="screenshots/marketplace.png" width="900" alt="Marketplace">
+  <img src="screenshots/marketplace.jpg" width="900" alt="Marketplace">
 </p>
 ---
 
@@ -191,7 +191,7 @@ Every product contains detailed information so buyers can make informed decision
 * AI Product Insights
 
 <p align="center">
-  <img src="screenshots/product.png" width="900" alt="Product Page">
+  <img src="screenshots/product.jpg" width="900" alt="Product Page">
 </p>
 
 ---
@@ -222,7 +222,7 @@ Instead of relying only on the seller's description, Gemini analyzes the listing
 
 This enables buyers to make smarter purchasing decisions while improving trust across the marketplace.
 <p align="center">
-  <img src="screenshots/ai-verification.png" width="900" alt="AI Product Insights">
+  <img src="screenshots/aiproduct verification.jpg" width="900" alt="AI Product Insights">
 </p>
 
 ---
@@ -276,7 +276,7 @@ While most profile and document verification is streamlined, certain submissions
 Although AI helps automate product analysis and verification, sensitive identity documents require an additional layer of human oversight. The Admin Verification Panel ensures that every verified seller is authentic, maintaining a secure and trustworthy marketplace for all students.
 This hybrid **AI + Human Verification** approach minimizes fraud while ensuring genuine users are never unfairly rejected due to image quality or document inconsistencies.
 <p align="center">
-  <img src="screenshots/profile.png" width="900" alt="Profile Dashboard">
+  <img src="screenshots/profile.jpg" width="900" alt="Profile Dashboard">
 </p>
 ---
 
