@@ -2,6 +2,16 @@
 <html lang="en">
 
 <head>
+    <script>
+        // Cloudflare Turnstile loads async and calls this the instant it's ready,
+        // which can race ahead of /js/login.js (loaded at the bottom of body).
+        // This stub guarantees the callback exists, then hands off to the real
+        // renderTurnstile() once login.js has defined it.
+        window.onloadTurnstileCallback = function () {
+            window.__turnstileReady = true;
+            if (typeof window.renderTurnstile === "function") window.renderTurnstile();
+        };
+    </script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" async defer></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
