@@ -43,71 +43,15 @@ const supabaseAuth = createClient(
     { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
-// ---- Refresh-token single-flight de-duplication ----
-// Supabase refresh tokens are single-use and rotate on redemption. When a page
-// fires several authenticated requests in parallel with an expired access
-// token, each one reads the same (still-stale) refresh token from the client
-// before any response has come back to update it. Without de-duplication,
-// only the first of those concurrent requests actually succeeds — every
-// other one redeems an already-rotated token and fails with
-// "Invalid Refresh Token: Already Used". This map ensures concurrent callers
-// with the same refresh token share a single in-flight Supabase call instead
-// of racing each other.
-const refreshInFlight = new Map(); // refresh_token -> Promise<{data, error}>
-
-function refreshSessionDeduped(refreshToken) {
-    if (refreshInFlight.has(refreshToken)) {
-        return refreshInFlight.get(refreshToken);
-    }
-    const promise = supabaseAuth.auth.refreshSession({ refresh_token: refreshToken })
-        .finally(() => {
-            // Keep the result cached briefly so requests that were already
-            // in flight (but hadn't called us yet) still hit the cache
-            // instead of redeeming the now-rotated token themselves.
-            setTimeout(() => refreshInFlight.delete(refreshToken), 5000);
-        });
-    refreshInFlight.set(refreshToken, promise);
-    return promise;
-}
-
 const GEMINI_MODEL = "gemini-2.5-flash";
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-// =========================================================================
-// RETRY HELPER FOR THIRD-PARTY HTTP CALLS
-// =========================================================================
-// Only retries transient failures: network-level errors (DNS blip, timeout,
-// connection reset — fetch() throws for these) and 429/5xx responses. A 4xx
-// like a bad request or bad API key is not retried, since retrying it just
-// repeats the same failure. Exponential backoff with jitter to avoid
-// hammering the upstream service in a tight loop.
-async function fetchWithRetry(url, options = {}, { retries = 3, baseDelayMs = 300, retryStatusCodes = [429, 502, 503, 504] } = {}) {
-    let lastErr;
-    for (let attempt = 0; attempt <= retries; attempt++) {
-        try {
-            const res = await fetch(url, options);
-            if (res.ok || !retryStatusCodes.includes(res.status) || attempt === retries) {
-                return res;
-            }
-            lastErr = new Error(`Retryable HTTP ${res.status}`);
-        } catch (err) {
-            lastErr = err;
-            if (attempt === retries) throw lastErr;
-        }
-        const delay = baseDelayMs * 2 ** attempt + Math.random() * 100;
-        await new Promise(resolve => setTimeout(resolve, delay));
-    }
-    throw lastErr;
-}
 
 async function askGemini(parts) {
     const response = await genAI.models.generateContent({
         model: GEMINI_MODEL,
         contents: [{ role: 'user', parts }]
     });
-    if (!response) return '';
-    // Handle both getter property and method structures safely
-    return typeof response.text === 'function' ? response.text() : (response.text || '');
+    return response.text || '';
 }
 
 function extractJson(text) {
@@ -118,7 +62,7 @@ function extractJson(text) {
 
 async function verifyProductWithAI(title, description, imageUrls) {
     try {
-        const mainImageResp = await fetchWithRetry(imageUrls[0]);
+        const mainImageResp = await fetch(imageUrls[0]);
         if (!mainImageResp.ok) throw new Error(`Could not fetch product image (${mainImageResp.status})`);
         const arrayBuffer = await mainImageResp.arrayBuffer();
         const base64Data = Buffer.from(arrayBuffer).toString("base64");
@@ -213,7 +157,7 @@ async function verifyTurnstile(token, remoteIp) {
         body.append('response', token);
         if (remoteIp) body.append('remoteip', remoteIp);
 
-        const verifyRes = await fetchWithRetry('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body
@@ -282,7 +226,9 @@ async function getUserFromToken(req) {
         throw new AuthError('Session expired. Please log in again.');
     }
 
-    const { data: refreshData, error: refreshError } = await refreshSessionDeduped(refreshToken);
+    const { data: refreshData, error: refreshError } = await supabaseAuth.auth.refreshSession({
+        refresh_token: refreshToken
+    });
 
     if (refreshError || !refreshData?.user) {
         console.error('Token refresh failed:', refreshError?.message);
@@ -449,7 +395,7 @@ app.post('/api/auth/refresh', async (req, res) => {
     const { refresh_token } = req.body;
     if (!refresh_token) return res.status(400).json({ success: false, message: 'No refresh token' });
     try {
-        const { data, error } = await refreshSessionDeduped(refresh_token);
+        const { data, error } = await supabaseAuth.auth.refreshSession({ refresh_token });
         if (error || !data.session) throw new Error(error?.message || 'Refresh failed');
         return res.json({
             success:       true,
@@ -671,23 +617,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         
         return res.json({ success: true, message: 'Welcome back to UniThrift!', token, refresh_token });
     } catch (error) {
-        // Previously every failure here — a real wrong password, a network
-        // blip calling Supabase, an RPC error, anything — was flattened into
-        // the same "Invalid credentials" message with zero logging. That's
-        // indistinguishable from an actual wrong password to the user, and
-        // unrecoverable to debug server-side, since nothing was ever printed.
-        console.error('Login error:', error.message || error);
-
-        const isBadCredentials = /invalid login credentials/i.test(error.message || '');
-
-        if (isBadCredentials) {
-            return res.status(400).json({ success: false, message: 'Invalid credentials. Please try again.' });
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'Login failed due to a temporary issue. Please try again in a moment.'
-        });
+        return res.status(400).json({ success: false, message: 'Invalid credentials. Please try again.' });
     }
 });
 
@@ -1231,7 +1161,7 @@ app.get('/api/geoapify/autocomplete', async (req, res) => {
         const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(text)}` +
                     `&filter=countrycode:in&format=json&apiKey=${GEOAPIFY_KEY}`;
 
-        const geoRes = await fetchWithRetry(url);
+        const geoRes = await fetch(url);
         if (!geoRes.ok) throw new Error(`Geoapify error: ${geoRes.status}`);
         const data = await geoRes.json();
 
@@ -1300,7 +1230,24 @@ app.post('/api/notifications/read-all', async (req, res) => {
 // =========================================================================
 // CHAT API ENDPOINTS
 // =========================================================================
-app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
+// There's no standalone chat page — the chat UI lives in a popup on the product
+// page (product.html). This route exists so links like /chat?room=<id> (e.g. from
+// the Updates notifications page) still work: look up which product the room
+// belongs to and redirect there with a flag telling product.js to auto-open the
+// chat popup.
+app.get('/chat', async (req, res) => {
+    const roomId = req.query.room;
+    if (!roomId) return res.redirect('/marketplace');
+
+    try {
+        const { data: room } = await supabase
+            .from('chat_rooms').select('product_id').eq('id', roomId).maybeSingle();
+        if (!room) return res.redirect('/marketplace');
+        return res.redirect(`/product?id=${room.product_id}&openChat=1`);
+    } catch (err) {
+        return res.redirect('/marketplace');
+    }
+});
 
 // ---- GET OR CREATE CHAT ROOM ----
 app.post('/api/chat/room', async (req, res) => {
@@ -1427,47 +1374,20 @@ app.post('/api/chat/rooms/:room_id/messages', async (req, res) => {
         if (!room || (room.buyer_id !== user.id && room.seller_id !== user.id))
             return res.status(403).json({ success: false, message: 'Access denied' });
 
-        const trimmedText = message_text.trim();
         const { data: msg, error } = await supabase
             .from('messages')
-            .insert({ room_id: req.params.room_id, sender_id: user.id, message_text: trimmedText })
+            .insert({ room_id: req.params.room_id, sender_id: user.id, message_text: message_text.trim() })
             .select().single();
         if (error) throw error;
 
-        // Notify the other party in the room — persisted row (so it shows up on
-        // next load / via the postgres_changes listener) plus an instant broadcast
-        // (so it shows up live without a refresh) on the Updates page.
         const recipientId = room.buyer_id === user.id ? room.seller_id : room.buyer_id;
-        if (recipientId) {
-            const { data: senderProfile } = await supabase
-                .from('profiles').select('full_name, username').eq('id', user.id).single();
-            const senderName = senderProfile?.full_name || senderProfile?.username || 'A student';
-            const preview = trimmedText.length > 80 ? `${trimmedText.slice(0, 80)}…` : trimmedText;
-
-            await createNotification(
-                recipientId,
-                `New message from ${senderName}: "${preview}"`,
-                'message',
-                req.params.room_id
-            );
-
-            try {
-                await supabase.channel(`notifications:${recipientId}`).send({
-                    type: 'broadcast',
-                    event: 'new_msg_alert',
-                    payload: {
-                        msg: preview,
-                        senderName,
-                        senderId: user.id,
-                        roomId: req.params.room_id
-                    }
-                });
-            } catch (broadcastErr) {
-                // Live delivery is best-effort; the persisted notification above
-                // already guarantees the recipient sees it on next load.
-                console.error('Realtime broadcast failed:', broadcastErr.message);
-            }
-        }
+        const senderName = (await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle()).data?.username || 'Someone';
+        createNotification(
+            recipientId,
+            `New message from ${senderName}: "${message_text.trim().slice(0, 80)}"`,
+            'message',
+            req.params.room_id
+        );
 
         return res.json({ success: true, message: msg });
     } catch (err) {

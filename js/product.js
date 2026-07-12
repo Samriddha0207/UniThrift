@@ -50,49 +50,6 @@ let currentUserName = null;
 let activeRoomId = null;
 
 // ======================================
-// SUPABASE REALTIME CLIENT (chat only)
-// ======================================
-// window.__SUPABASE_URL__ / __SUPABASE_ANON__ are injected server-side by
-// sendWithSupabaseConfig() for this page. This client is ONLY used for
-// Realtime subscriptions — all reads/writes still go through authFetch so
-// the backend's own auth + RLS-bypassing service role stays authoritative.
-const realtimeClient = (window.supabase && window.__SUPABASE_URL__ && window.__SUPABASE_ANON__)
-  ? window.supabase.createClient(window.__SUPABASE_URL__, window.__SUPABASE_ANON__, {
-      auth: {
-        // authFetch (auth-fetch.js) already owns token refresh end-to-end.
-        // If this client ran its own autoRefreshToken timer too, it would
-        // independently rotate the same Supabase refresh token in the
-        // background — and since refresh tokens are single-use, whichever
-        // side loses the race gets "Invalid Refresh Token: Already Used".
-        // This client only ever borrows the token authFetch already holds.
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false
-      }
-    })
-  : null;
-
-let chatChannel = null;
-let realtimeSessionSynced = false;
-
-// Realtime authorizes postgres_changes against RLS using the session set on
-// this client, not the localStorage token authFetch uses. Keep them in sync
-// whenever we (re)open a chat room.
-async function syncRealtimeSession() {
-  if (!realtimeClient) return;
-  const access_token = localStorage.getItem("unithrift_session_token");
-  const refresh_token = localStorage.getItem("unithrift_refresh_token");
-  if (!access_token || !refresh_token) return;
-  try {
-    await realtimeClient.auth.setSession({ access_token, refresh_token });
-    realtimeSessionSynced = true;
-  } catch (err) {
-    console.error("Failed to sync realtime session:", err);
-    realtimeSessionSynced = false;
-  }
-}
-
-// ======================================
 // TOAST NOTIFICATIONS
 // ======================================
 const toastContainer = document.getElementById("toastContainer");
@@ -161,6 +118,91 @@ function showConfirm(message, title = "Are you sure?") {
         document.addEventListener("keydown", onKeydown);
     });
 }
+// ======================================
+// AUTH HELPERS
+// ======================================
+
+async function tryRefreshToken() {
+    const refreshToken = localStorage.getItem("unithrift_refresh_token");
+
+    if (!refreshToken) {
+        return null;
+    }
+
+    try {
+        const response = await fetch("/api/auth/refresh", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                refresh_token: refreshToken
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            return null;
+        }
+
+        localStorage.setItem(
+            "unithrift_session_token",
+            data.access_token
+        );
+
+        localStorage.setItem(
+            "unithrift_refresh_token",
+            data.refresh_token
+        );
+
+        return data.access_token;
+
+    } catch (err) {
+        console.error("Token refresh failed:", err);
+        return null;
+    }
+}
+
+async function authFetch(url, options = {}) {
+
+    const token = localStorage.getItem("unithrift_session_token");
+    const refreshToken = localStorage.getItem("unithrift_refresh_token");
+
+    const buildHeaders = (accessToken) => {
+        const headers = new Headers(options.headers || {});
+
+        if (accessToken) {
+            headers.set("Authorization", `Bearer ${accessToken}`);
+        }
+
+        if (refreshToken) {
+            headers.set("X-Refresh-Token", refreshToken);
+        }
+
+        return headers;
+    };
+
+    let response = await fetch(url, {
+        ...options,
+        headers: buildHeaders(token)
+    });
+
+    if (response.status !== 401) {
+        return response;
+    }
+
+    const newToken = await tryRefreshToken();
+
+    if (!newToken) {
+        return response;
+    }
+
+    return fetch(url, {
+        ...options,
+        headers: buildHeaders(newToken)
+    });
+}
 
 if (chatWithSellerBtn) chatWithSellerBtn.style.display = 'none';
 if (contactSellerBtn) contactSellerBtn.style.display = 'none';
@@ -197,8 +239,9 @@ function renderSellerLayout(token) {
       markSoldBtn.textContent = "Marking...";
       markSoldBtn.disabled = true;
       try {
-        const res = await authFetch(`/api/products/${productId}/sold`, {
-          method: 'PATCH'
+        const res = await fetch(`/api/products/${productId}/sold`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.message);
@@ -226,8 +269,9 @@ function renderSellerLayout(token) {
       deleteBtn.textContent = "Deleting...";
       deleteBtn.disabled = true;
       try {
-        const res = await authFetch(`/api/products/${productId}`, {
-          method: 'DELETE'
+        const res = await fetch(`/api/products/${productId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.message);
@@ -306,25 +350,33 @@ async function loadProduct() {
 
     const token = localStorage.getItem("unithrift_session_token");
 
-    if (token) {
-      try {
-        const r = await authFetch('/api/profile');
-        const d = await r.json();
+if (token) {
+  try {
+    const r = await authFetch('/api/profile');
+    const d = await r.json();
 
-        if (d.success) {
-          currentUserId = d.profile?.id;
-          currentUserName = d.profile?.full_name || d.profile?.username || "User";
-        }
-      } catch (err) {
-        console.error("Profile initialization context failure:", err);
-      }
+    if (d.success) {
+      currentUserId = d.profile?.id;
+      currentUserName =
+        d.profile?.full_name ||
+        d.profile?.username ||
+        "User";
     }
 
-    if (currentUserId && String(currentUserId) === String(targetedSellerId)) {
-      renderSellerLayout(token);
-    } else {
-      await renderBuyerLayout(token);
-    }
+  } catch (err) {
+    console.error("Profile initialization context failure:", err);
+  }
+}
+
+if (currentUserId && String(currentUserId) === String(targetedSellerId)) {
+  renderSellerLayout(token);
+} else {
+  await renderBuyerLayout(token);
+}
+
+if (params.get("openChat") === "1" && chatWithSellerBtn && chatWithSellerBtn.style.display !== "none") {
+  chatWithSellerBtn.click();
+}
 
   } catch (err) {
     console.error(err);
@@ -499,9 +551,12 @@ if (reviewForm) {
     }
 
     try {
-      const response = await authFetch(`/api/products/${productId}/reviews`, {
+      const response = await fetch(`/api/products/${productId}/reviews`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ rating, review_text })
       });
 
@@ -563,6 +618,7 @@ window.addEventListener("click", (e) => {
 // ENHANCED CHAT COMPONENT ENGINE
 // ======================================
 let loadedMessageIds = new Set();
+let chatPollInterval = null;
 
 function formatMessageTime(dateInput) {
   const date = dateInput ? new Date(dateInput) : new Date();
@@ -623,10 +679,7 @@ function populateChatHeader() {
   }
 }
 
-// One-time load of existing history when a chat room is opened. Live
-// updates after this point come from the Realtime subscription below, not
-// from re-polling this endpoint.
-async function loadInitialMessages() {
+async function fetchMessages() {
   if (!activeRoomId) return;
   const token = localStorage.getItem("unithrift_session_token");
   if (!token) return;
@@ -634,73 +687,45 @@ async function loadInitialMessages() {
   try {
     const response = await authFetch(`/api/chat/rooms/${activeRoomId}/messages`);
     const msgResult = await response.json();
-
+    
     if (msgResult.success && msgResult.messages) {
+      let addedNew = false;
       msgResult.messages.forEach(msg => {
         if (!loadedMessageIds.has(msg.id)) {
           loadedMessageIds.add(msg.id);
           const direction = (String(msg.sender_id) === String(currentUserId)) ? "sent" : "received";
           const timestamp = msg.created_at || msg.inserted_at || msg.timestamp;
           appendMessageToUI(msg.message_text, direction, timestamp);
+          addedNew = true;
         }
       });
-      if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+      if (addedNew && chatMessages) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
     }
   } catch (err) {
-    console.error("Error loading initial chat history:", err);
+    console.error("Error fetching messages during poll:", err);
   }
 }
 
-// Subscribes to new INSERTs on `messages` for this room via Supabase
-// Realtime, scoped by RLS to rooms the logged-in user is a buyer/seller of.
-async function subscribeToRoom(roomId) {
-  unsubscribeFromRoom();
-  if (!realtimeClient || !roomId) return;
-
-  await syncRealtimeSession();
-  if (!realtimeSessionSynced) {
-    console.warn("Realtime session not available — live messages won't stream in until the chat is reopened.");
-  }
-
-  chatChannel = realtimeClient
-    .channel(`chat-room-${roomId}`)
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "messages", filter: `room_id=eq.${roomId}` },
-      (payload) => {
-        const msg = payload.new;
-        if (!msg || loadedMessageIds.has(msg.id)) return;
-        loadedMessageIds.add(msg.id);
-        const direction = (String(msg.sender_id) === String(currentUserId)) ? "sent" : "received";
-        appendMessageToUI(msg.message_text, direction, msg.created_at);
-      }
-    )
-    .subscribe((status) => {
-      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        console.error("Realtime chat subscription failed:", status);
-      }
-    });
+function startPolling() {
+  stopPolling();
+  fetchMessages();
+  chatPollInterval = setInterval(fetchMessages, 2500);
 }
 
-function unsubscribeFromRoom() {
-  if (chatChannel && realtimeClient) {
-    realtimeClient.removeChannel(chatChannel);
+function stopPolling() {
+  if (chatPollInterval) {
+    clearInterval(chatPollInterval);
+    chatPollInterval = null;
   }
-  chatChannel = null;
 }
-
-// authFetch (auth-fetch.js) owns token rotation and broadcasts this event
-// whenever it writes new tokens to localStorage. Since realtimeClient has
-// autoRefreshToken disabled (see its init above), this is the only way its
-// session stays valid across a long-lived chat session. Only bother resyncing
-// while a chat channel is actually open — no point otherwise.
-window.addEventListener("unithrift:tokens-updated", () => {
-  if (chatChannel) syncRealtimeSession();
-});
 
 async function syncChatRoomHistory() {
   const sendChatBtn = document.getElementById("sendChatBtn");
 
+  // Reset input to enabled at the start of every attempt; the MULTIPLE_BUYERS
+  // branch below re-disables it since there's no single room to send into.
   if (chatInput) chatInput.disabled = false;
   if (sendChatBtn) sendChatBtn.disabled = false;
 
@@ -724,6 +749,7 @@ async function syncChatRoomHistory() {
     }
 
     activeRoomId = roomResult.room_id;
+
     loadedMessageIds.clear();
 
     if (chatMessages) {
@@ -731,14 +757,16 @@ async function syncChatRoomHistory() {
         '<div class="message system-msg">Welcome to campus chat! Protect your data.</div>';
     }
 
-    await loadInitialMessages();
-    await subscribeToRoom(activeRoomId);
+    startPolling();
 
   } catch (err) {
     console.error("Failed to restore chat room history:", err);
-    unsubscribeFromRoom();
+    stopPolling();
     activeRoomId = null;
 
+    // The seller has more than one interested buyer for this listing — there's
+    // no single room to open here, so point them to the full inbox instead of
+    // showing a plain error.
     if (err.code === "MULTIPLE_BUYERS") {
       if (chatInput) chatInput.disabled = true;
       if (sendChatBtn) sendChatBtn.disabled = true;
@@ -780,7 +808,10 @@ if (chatWithSellerBtn) {
     }
 
     const sellerData = currentSeller?.seller || currentSeller;
-    const sellerName = sellerData?.full_name || sellerData?.username || "Seller";
+    const sellerName =
+      sellerData?.full_name ||
+      sellerData?.username ||
+      "Seller";
 
     const isSeller =
       currentUserId &&
@@ -788,7 +819,9 @@ if (chatWithSellerBtn) {
       String(currentProduct.seller_id || currentProduct.user_id);
 
     if (chatSellerName) {
-      chatSellerName.textContent = isSeller ? "Buyer Chat" : sellerName;
+      chatSellerName.textContent = isSeller
+        ? "Buyer Chat"
+        : sellerName;
     }
 
     populateChatHeader();
@@ -803,7 +836,7 @@ if (chatWithSellerBtn) {
 if (closeChatBtn) {
   closeChatBtn.addEventListener("click", () => {
     if (chatPopup) chatPopup.classList.remove("open");
-    unsubscribeFromRoom();
+    stopPolling();
   });
 }
 
@@ -841,16 +874,14 @@ if (chatForm) {
 
       const result = await response.json();
 
-      if (!(result.success || response.ok)) {
+      if (result.success || response.ok) {
+        await fetchMessages();
+      } else {
         console.error("Failed to send message:", result.message);
-        showToast("Message failed to send.", "error");
       }
-      // No manual re-fetch here: the insert lands back on the Realtime
-      // channel (subscribeToRoom's INSERT listener), which appends it for
-      // the sender the same way it does for the recipient.
 
     } catch (err) {
-      console.error("Failed to execute chat send system pipeline:", err);
+      console.error("Transmission execution system pipeline error:", err);
     }
   });
 }
