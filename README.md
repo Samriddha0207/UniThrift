@@ -20,6 +20,8 @@ UniThrift is an AI-powered marketplace built exclusively for college students, e
 ## Deployed Website
    https://unithrift-q9jwrq7x9-rizz-max.vercel.app/
    https://unithrift-weld.vercel.app/
+##DEMO VIDEO LINK
+https://www.youtube.com/watch?v=gzLT5MLOGHc
 # Overview
 
 Buying second-hand products is often difficult for students due to scams, fake listings, and the absence of a trusted student-only platform.
